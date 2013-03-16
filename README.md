@@ -38,3 +38,17 @@ The `-l` and `-g` options can be combined to control pseudo-groups of lights
 
     % hueman -l office.desklamp,bedroom.his -g lounge on
     % hueman -l bedroom.his -l bedroom.hers on
+
+
+Presets
+-------
+
+Hueman comes with a set of predefined presets (eventually!), but you can also define your own. Simply create a `~/.hueman.yml` similar to the following.
+
+    presets:
+      wake_up:
+        brightness: 100%
+        temp: 0%
+      underwater:
+        color: blue
+        brightness: 30%

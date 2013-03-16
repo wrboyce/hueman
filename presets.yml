@@ -1,0 +1,6 @@
+red_alert:
+  brightness: 100%
+  effect: lselect
+warm_glow:
+  temp: 350
+  brightness: 20%

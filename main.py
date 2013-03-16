@@ -1,4 +1,7 @@
+import os
+
 import requests
+import yaml
 
 
 class Controller(object):
@@ -190,10 +193,15 @@ class Controller(object):
             raise ValueError("Cannot parse RGB value")
         val = rgb2xyz(rgb)
         self.xyz(val, commit)
+        return self
 
     def preset(self, name, commit=False):
         """ Load a preset state """
-        pass
+        for key, val in self._hue.preset(name):
+            getattr(self, key)(val)
+        if commit:
+            self.commit()
+        return self
 
 
 class GroupController(object):
@@ -229,10 +237,25 @@ class Hue(Group):
         self._hostname = hostname
         self._username = username
         self._get_members()
+        self._load_presets()
 
     def _get_members(self):
         self._groups = Group.get_all(self)
         self._lights = Light.get_all(self)
+
+    def _load_presets(self):
+        self._presets = {}
+        for cfg in ('presets.yml', os.path.expanduser('~/.hueman.yml')):
+            try:
+                cfg_file = file(cfg).read()
+                cfg_dict = yaml.load(cfg_file)
+                self._presets.update(cfg_dict.get('presets'), cfg_dict)
+            except IOError:
+                pass
+
+    def _preset(self, name):
+        name = name.replace(' ', '_')
+        return self._presets[name].copy()
 
     def _get(self, path):
         return requests.get('http://{}/api/{}/{}'.format(self._hostname, self._username, path)).json()
