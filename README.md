@@ -209,3 +209,21 @@ Or you can just search `Hue` directly:
 
     >>> hue.find(['office.', '.his']).preset('red alert').commit()  # All office lights and bedroom.his
     >>> hue.find(re.compile('\.h(?:er|i)s?$'))  # Regexs, too
+
+
+TODO
+====
+
+* setup.py
+* config file parsing
+* commandline entrypoint
+* commandline argument parsing
+* commandline: attribute abbreviation
+* commandline: find wildcards
+* commandline: add wildcards to `find`
+* commandline natural language processing
+* api: regex in `.find`
+* test with a real Hue!
+* unit tests
+* group creation/management
+* schedule management
