@@ -226,8 +226,8 @@ class Light(Controller):
 class Hue(Group):
     def __init__(self, hostname, username):
         self._id = 0  # Group with id=0 is reserved for all lights in system (conveniently)
-        self.hostname = hostname
-        self.username = username
+        self._hostname = hostname
+        self._username = username
         self._get_members()
 
     def _get_members(self):
@@ -235,10 +235,10 @@ class Hue(Group):
         self._lights = Light.get_all(self)
 
     def _get(self, path):
-        return requests.get('http://{}/api/{}/{}'.format(self.hostname, self.username, self.path)).json()
+        return requests.get('http://{}/api/{}/{}'.format(self._hostname, self._username, path)).json()
 
     def _put(self, path, data):
-        return requests.put('http://{}/api/{}/{}'.format(self.hostname, self.username, self.path), data).json()
+        return requests.put('http://{}/api/{}/{}'.format(self._hostname, self._username, path), data).json()
 
     def groups(self, name=None):
         if name is None:
