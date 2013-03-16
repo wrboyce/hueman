@@ -1,3 +1,7 @@
+THIS CODE IS COMPLETELY UNTESTED AND AS OF YET JUST A CONCEPT
+=============================================================
+
+
 hueman
 ======
 
