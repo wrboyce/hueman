@@ -197,7 +197,20 @@ class Controller(object):
 
     def preset(self, name, commit=False):
         """ Load a preset state """
-        for key, val in self._hue.preset(name):
+        preset_data = self._hue._preset(name)
+        if isinstance(preset_data, list):
+            return self._transition(preset_data)
+        return self._apply(preset_data, commit)
+
+    def _transition(self, presets, commit=True):
+        for data in presets:
+            if data is not presets[-1]:
+                data['time'] = 0
+            self._apply(data, True)
+        return self
+
+    def _apply(self, state, commit=False):
+        for key, val in state.iteritems():
             getattr(self, key)(val)
         if commit:
             self.commit()
