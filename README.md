@@ -214,6 +214,13 @@ Or you can just search `Hue` directly:
     >>> hue.find(['office.', '.his']).preset('red alert').commit()  # All office lights and bedroom.his
     >>> hue.find(re.compile('\.h(?:er|i)s?$'))  # Regexs, too
 
+### Group Controllers
+
+I haven't quite decided how `GroupController` will work yet, but it'll allow you to dispatch commands to arbitary groups of lights. Something like this:
+
+    >>> gc = GroupController(hue, 'bedroom.*', '*.*lamp')
+    >>> gc.preset('relax').commit()
+
 
 TODO
 ====
@@ -231,3 +238,10 @@ TODO
 * unit tests
 * group creation/management
 * schedule management
+* api: reading state from Hue/Group/GroupController
+* api: GroupControllers
+* api: `parse_time`
+* api: `parse_colour` -- check for colours in `_nstate`
+* api: add `Controller.reset` to drop `_nstate`
+* api: Hue should query `lights/get`
+* todo: multiple hues
