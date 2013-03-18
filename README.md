@@ -1,11 +1,19 @@
-THIS CODE IS COMPLETELY UNTESTED AND AS OF YET JUST A CONCEPT
-=============================================================
+BROKEN AND UNTESTED
+===================
+
+My Hue Starter Kit arrives on Tuesday (19th March 2013), until then everything here is liable to be very broken (but full of awesome ideas).
 
 
 hueman
 ======
 
 A human interface for managing your hues.
+
+
+Overview
+--------
+
+Blurb.
 
 
 Usage
@@ -48,22 +56,38 @@ Turn all the lights on
 
     % hueman -a on
 
-Turn a room on
+#### Finding the Light
 
-    % hueman -g lounge on
+The main method of finding targets is via the `-f`/`--find` argument. You can find multiple targets by either passing `-f` multiple times, or passing a comma-seperated list. All names are case intensitive.
 
-Turn a light on
+    % hueman -f bedroom.his -f bedroom.hers on
+    % hueman -f bedroom.his,bedroom.hers
 
-    % hueman -l bedroom.hers on
+`find` is pretty smart, and can generally work out if you are talking about a group or a light:
 
-The `-l` and `-g` options can be combined to control pseudo-groups of lights
+    % hueman -f bedroom on
+    % hueman -f his,hers on
 
-    % hueman -l office.desklamp,bedroom.his -g lounge on
-    % hueman -l bedroom.his -l bedroom.hers on
+If you need to be explicit, you can be:
 
-You can get also away with being relatively vague
+    % hueman -f bedroom. on
+    % hueman -f .his,.hers on
 
-    % hueman -f his,desklamp,lounge on
+You can also use wildcards:
+
+    % hueman -f bedroom.h* on
+
+Or full-blown regexs!
+
+    % hueman -f /^bedroom.h(er|i)s$/ on
+
+If `find` is too vague, you can target groups/lights explicity, too:
+
+    % hueman -g bedroom on
+    % hueman -l bedroom.his,bedroom.hers on
+    % hueman -g bedroom -l his,hers on
+
+#### Presets
 
 Invoking presets is easy...
 
@@ -77,17 +101,9 @@ And, you guessed it… Combining the two:
 
     % hueman -a red alert colour:yellow brightness:20%
 
-Some of those words are mighty long:
+Some of those words are mighty long, so you can shorten them to their shortest unique string:
 
     $ hueman -a bri:150 hue:0
-
-You can also address `hueman` with _very_ basic natural language:
-
-    % hueman red alert in all rooms
-    % hueman set half brightness in office
-    % hueman mood lighting, lounge
-    % hueman make the lounge pink
-    % hueman darkness
 
 
 Settings
@@ -122,13 +138,13 @@ Presets can transition between two states, the implied `time` for the initial `s
 API
 ---
 
-`hueman` exposes a simple API for getting/setting group/light state. The top-level class is `Hue`:
+`hueman` exposes a simple API for getting/setting group/light state. The top-level class is `Hueman`:
 
-    >>> hue = Hue(username, password)
+    >>> hue = Hueman(TODO)
     >>> light = hue.group('office').light('floorlamp')
 
 
-`Hue` exposes methods for controlling lights:
+`Controller`s expose multiple methods for controlling lights:
 
 * `brightness(int)`
 * `hue(int)`
@@ -204,12 +220,12 @@ They can be chained, too:
     >>> light.brightness('100%').colour('red').commit()
     >>> light.brightness(0).colour('blue', commit=True).brightness('80%').colour('purple').time('30s').commit()
 
-All of the above works with `Hue`, `Group`, and `Light`:
+All of the above works with `Bridge`, `Group`, and `Light`:
 
     >>> hue.preset('red_alert', commit=True)  # Red Alert every light!
     >>> hue.group('bedroom').brightness(255).temp(0).time(0).commit()  # WAKE UP!
 
-Or you can just search `Hue` directly:
+Or you can just search `Bridge` directly using `.find` which returns a `GroupController`.
 
     >>> hue.find(['office.', '.his']).preset('red alert').commit()  # All office lights and bedroom.his
     >>> hue.find(re.compile('\.h(?:er|i)s?$'))  # Regexs, too
@@ -218,30 +234,56 @@ Or you can just search `Hue` directly:
 
 I haven't quite decided how `GroupController` will work yet, but it'll allow you to dispatch commands to arbitary groups of lights. Something like this:
 
-    >>> gc = GroupController(hue, 'bedroom.*', '*.*lamp')
+    >>> gc = GroupController('bedroom.*', '*.*lamp')
     >>> gc.preset('relax').commit()
 
+### Hueman
+
+A superclass of `GroupController` designed to consume a configuration and create the appropriate `Bridge`, `Group` and `Light` instances. Provides transparency across multiple `Bridge`s.
+
+    >>> hueman = Hueman({'bridges': [{'hostname': 'limelight01.example.com', 'username': 'app-hash-01'}, {'hostname': 'limelight02.example.com', 'username': 'app-hash-02'})
+    >>> hueman.on()
+
+### Configuration
+
+A configuration is a dictionary with a simple structure, the `plugins` and `presets` sections are optional.
+
+    {'bridges': [
+        {'hostname': 'limelight01.example.com', 'username': 'app-hash-01'},
+        {'hostname': 'limelight02.example.com', 'username': 'app-hash-02'},
+     ],
+     'plugins': {
+        'colour': 'hueman.plugins.Colour',
+        'weather': {
+            'path': 'hueman.plugins.Weather',
+            'settings': {
+                'latitude': 0.0,
+                'longitude': 0.0,
+            },
+        },
+     },
+     'presets': {
+        'full': {'brightness': '100'},
+        'sunset': {'colour': 'orange', 'brightness': '60%'},  # presets can call plugins
+     }
+    }
 
 TODO
 ====
 
-* setup.py
-* config file parsing
+* refactor & add setup.py
 * commandline entrypoint
-* commandline argument parsing
-* commandline: attribute abbreviation
-* commandline: find wildcards
-* commandline: add wildcards to `find`
-* commandline natural language processing
-* api: regex in `.find`
 * test with a real Hue!
 * unit tests
 * group creation/management
 * schedule management
 * api: reading state from Hue/Group/GroupController
-* api: GroupControllers
-* api: `parse_time`
 * api: `parse_colour` -- check for colours in `_nstate`
 * api: add `Controller.reset` to drop `_nstate`
-* api: Hue should query `lights/get`
-* todo: multiple hues
+* redo parse_XX functions and 'filter' parameter (preprocessor -- always a method)
+* plugin loading
+* Move ("rgb" and "colour") into `Plugins` (`Class(**settings)(target)`)
+* `Group(Controller, GroupController)`?
+* `Hueman` should accept host/user args directly
+* move command processing onto `Controller._parse_command`
+* protect against access to _vars in above
