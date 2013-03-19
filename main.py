@@ -1,5 +1,6 @@
 import argparse
 from itertools import ifilter
+import json
 import re
 import os
 
@@ -19,7 +20,7 @@ class Controller(object):
             'max': 255
         },
         'hue': {
-            'key': 'Hue',
+            'key': 'hue',
             'filter': 'parse_int',
             'min': 0,
             'max': 65535,
@@ -63,6 +64,9 @@ class Controller(object):
     id, name = None, None
     _bridge, _cstate, _nstate = None, None, None
 
+    def __str__(self):
+        return '<{}(id={}, name="{}")>'.format(self.__class__.__name__, self.id, self.name)
+
     ## Given a configured "Bridge", lookup all entities
     @classmethod
     def get_all(cls, bridge):
@@ -85,7 +89,7 @@ class Controller(object):
     def _get_state(self):
         self._cstate = self._bridge._get('{}/{}/{}'.format(self._endpoint, self.id, self._state_endpoint))['state']
 
-    def commit(self):
+    def commit(self, commit=True):
         self._bridge._put('{}/{}/{}'.format(self._endpoint, self.id, self._state_endpoint), self._nstate)
         self._cstate = self._nstate.copy()
         self._nstate = {}
@@ -95,7 +99,7 @@ class Controller(object):
     ## usage: controller.brightness() -> current_brightness
     ##        controller.brightness(100)
     def __getattr__(self, key):
-        if key in self._plugins:
+        if key in self._bridge._plugins:
             def pluginwrapper(self, commit=False, **kwargs):
                 self._apply_plugin(key, commit, **kwargs)
                 return self
@@ -104,17 +108,17 @@ class Controller(object):
             raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__.__name__, key))
         attr_cfg = Light._attributes[key]
         filter_fun = attr_cfg.get('filter', None)
-        if not callable(filter_fun):
+        if filter_fun is not None and not callable(filter_fun):
             filter_fun = getattr(self, filter_fun, None)
-        if filter_fun is None:
+        elif filter_fun is None:
             filter_fun = lambda v, c: v
-        val = self._cstate[attr_cfg['key']]
         def gettersetter(new_val=None, commit=False):  # noqa
+            print '{}.{}({})'.format(self, key, new_val)
             if new_val is None:
-                return val
+                return self._cstate[attr_cfg['key']]
             elif attr_cfg.get('readonly', False):
                 raise ValueError("Attempted to set readonly value")
-            self._state[attr_cfg['key']] = filter_fun(new_val, attr_cfg)
+            self._nstate[attr_cfg['key']] = filter_fun(new_val, attr_cfg)
             if commit:
                 self.commit()
             return self
@@ -139,7 +143,7 @@ class Controller(object):
                     raise ValueError("Cannot set to a percentage of an unknown value!")
                 val = (max_val * val) / 100
             else:
-                current_val = self._state[cfg['key']]
+                current_val = self._cstate[cfg['key']]
                 diff = (current_val * val) / 100
                 if change == '-':  # decrease by...
                     val = (current_val - diff)
@@ -153,13 +157,13 @@ class Controller(object):
             val = max_val
         return val
 
-    def parse_xyz(self, val):
+    def parse_xyz(self, val, _cfg):
         """ Parse a colour in the XYZ space, dropping the [unsupported] Z property. """
         if len(val) > 2:
             val = val[:2]
         return val
 
-    def parse_time(self, val):
+    def parse_time(self, val, _cfg):
         """ Parse a time from "shorthand" format: 10m, 30s, 1m30s. """
         time = 0
         if 'm' in val:
@@ -173,7 +177,7 @@ class Controller(object):
     def colour(self, val, commit=False):
         """ Lookup a colour RGB, convert to XYZ and update the state. """
         r = requests.get('http://www.colourlovers.com/api/colors?keywords={}&numResults=1&format=json'.format(val)).json()
-        return self.rgb(r['rgb'], commit)
+        return self.rgb(r[0]['hex'], commit)
 
     def rgb(self, val, commit=False):
         def rgb2xyz(rgb):
@@ -183,13 +187,7 @@ class Controller(object):
                 0.0000000  0.0102048  0.9897952
             """
             for k, v in rgb.iteritems():
-                v = v / 255
-                if v > 0.04045:
-                    v = 1.055 * pow(v, 1 / 2.4) - 0.055
-                else:
-                    v *= 12.92
-                rgb[k] = v
-            r, g, b = rgb['r'], rgb['g'], rgb['b']
+                rgb[k] = v / 255
             x = rgb['r'] * 0.4887180 + rgb['g'] * 0.3106803 + rgb['b'] * 0.2006017
             y = rgb['r'] * 0.1762044 + rgb['g'] * 0.8129847 + rgb['b'] * 0.0108109
             z = rgb['r'] * 0.0000000 + rgb['g'] * 0.0102048 + rgb['b'] * 0.9897952
@@ -198,19 +196,21 @@ class Controller(object):
         if isinstance(val, basestring):
             if val.startswith('#'):
                 val = val[:1]
-            val = {
+            rgb = {
                 'r': int(val[0:2], 16),
-                'g': int(val[2:2], 16),
-                'b': int(val[4:2], 16),
+                'g': int(val[2:4], 16),
+                'b': int(val[4:6], 16),
             }
         elif isinstance(val, tuple):
-            val = {
+            rgb = {
                 'r': val[0],
                 'g': val[1],
                 'b': val[2],
             }
+        elif isinstance(val, dict) and 'r' in val and 'g' in val and 'b' in val:
+            rgb = val
         if rgb is None:
-            raise ValueError("Cannot parse RGB value")
+            raise ValueError("Cannot parse RGB value '{}'".format(val))
         val = rgb2xyz(rgb)
         self.xyz(val, commit)
         return self
@@ -253,7 +253,7 @@ class GroupController(object):
         self._members = set()
 
     def __str__(self):
-        return '<GroupController(name="{}", members={})>'.format(self.name, [m for m in self._members])
+        return '<{}(name="{}", members={})>'.format(self.__class__.__name__, self.name, [m for m in self._members])
 
     def __len__(self):
         return len(self._members)
@@ -269,7 +269,6 @@ class GroupController(object):
 
     def add_member(self, obj):
         """ Add a single Light/Group/Bridge or GroupController to the current GroupController. """
-        assert issubclass(obj, Controller) or isinstance(obj, GroupController)
         self._members.add(obj)
 
     def add_members(self, iter):
@@ -284,10 +283,13 @@ class GroupController(object):
     ## `Controller` interface
     def __getattr__(self, key):
         """ Dispatch calls to members, values are returned as a list of two-tuples: (name, value). """
-        def wrapper(new_val=None):
-            vals = map(lambda m: (m.name, getattr(m, key)(new_val)), self._member)
+        def wrapper(new_val=None, commit=False):
+            print '{}.{}({})'.format(self, key, new_val)
+            vals = map(lambda m: (m.name, getattr(m, key)(new_val)), self._members)
             if new_val is None:
                 return vals
+            if commit:
+                self.commit()
             return self
         return wrapper
 
@@ -326,24 +328,33 @@ class Light(Controller):
 
 
 class Bridge(Group):
-    def __init__(self, hostname, username, presets=None):
+    def __init__(self, hostname, username, plugins=None, presets=None):
         self._bridge = self
         self.id = 0  # Group with id=0 is reserved for all lights in system (conveniently)
-        self._hostname = hostname
+        self._hostname = self.name = hostname
         self._username = username
         self._get_members()
+        self._plugins = plugins if plugins is not None else {}
         self._presets = presets if presets is not None else {}
         self._load_global_presets()
 
+        self._cstate = {}
+        self._nstate = {}
+
     def _get_members(self):
-        self._lights = Light.get_all(self)
-        self._groups = Group.get_all(self, lights=self._lights)
+        d = self._get('')
+        self._lights = GroupController(name='[{}].lights'.format(self.name))
+        for l_id, l_data in d.get('lights', {}).iteritems():
+            self._lights.add_member(Light(self, l_id, l_data['name'].replace(' ', '-'), l_data.get('state', None)))
+        self._groups = GroupController(name='[{}].groups'.format(self.name))
+        for g_id, g_data in d.get('groups', {}).iteritems():
+            self._groups.add_member(Group(self, g_id, g_data['name'], g_data.get('state', None)))
 
     def _load_global_presets(self):
         try:
             cfg_file = file('hueman.yml').read()
             cfg_dict = yaml.load(cfg_file)
-            self._presets = cfg_dict.get('presets', {}).get(self._presets)
+            self._presets = cfg_dict.get('presets', {}).update(self._presets)
         except IOError:
             pass
 
@@ -352,10 +363,13 @@ class Bridge(Group):
         return self._presets[name].copy()
 
     def _get(self, path):
-        return requests.get('http://{}/api/{}/{}'.format(self._hostname, self._username, path)).json
+        return requests.get('http://{}/api/{}/{}'.format(self._hostname, self._username, path)).json()
 
     def _put(self, path, data):
-        return requests.put('http://{}/api/{}/{}'.format(self._hostname, self._username, path), data).json
+        print path, data
+        d = requests.put('http://{}/api/{}/{}'.format(self._hostname, self._username, path), json.dumps(data)).json()
+        print d
+        return d
 
     def group(self, name):
         """ Lookup a group by name, if name is None return all groups. """
@@ -371,7 +385,7 @@ class Bridge(Group):
             group, light = name.split('.')
             return self.group(group).light(light)
         else:
-            return self._lights[light]
+            return self._lights[name]
 
     def _find(self, name):
         """ name: group.light, group., .light, group, light """
@@ -412,7 +426,7 @@ class Hueman(GroupController):
             mod, cls = cp.rsplit('.', 1)
             mod = __import__(mod)
             return getattr(mod, cls)
-        self._cfg = cfg
+        super(Hueman, self).__init__()
         plugins = {}
         presets = {}
         for plugin_name, plugin_cfg in cfg.get('plugins', {}).iteritems():
@@ -427,7 +441,7 @@ class Hueman(GroupController):
         for preset_name, preset_state in cfg.get('presets', {}).iteritems():
             presets[preset_name] = preset_state
         for bridge_cfg in cfg.get('bridges', []):
-            self._add_member(Bridge(bridge_cfg['hostname'], bridge_cfg['username'], plugins, presets))
+            self.add_member(Bridge(bridge_cfg['hostname'], bridge_cfg['username'], plugins, presets))
 
 
 def cli(args):
@@ -440,12 +454,11 @@ def cli(args):
     parser.add_argument('-l', '--light', action='store')
     parser.add_argument('command', metavar='STATE', nargs='*')
     args = parser.parse_args(args)
-    cfg = yaml.load(os.expandpath(args.cfg_file))
-    target = Hueman(cfg)  # init Bridges and Plugins, and load Presets
+    cfg = yaml.load(file(os.path.expanduser(args.cfg_file)).read())
+    hue = Hueman(cfg)  # init Bridges and Plugins, and load Presets
     ## Find the target groups/lights
     if not any([args.all, args.find, args.group, args.light]):
         return  # must specify a target!
-    hue = Bridge(args.hostname, args.username)
     target = hue if args.all else GroupController(hue)
     if args.find:
         for t in args.find.split(','):
@@ -480,12 +493,13 @@ def cli(args):
         else:
             kvs.append(s.split(':'))
     if preset:
+        preset = ' '.join(preset)
         if preset == 'on':
             target.on(True)
         elif preset == 'off':
-            target.off(False)
+            target.on(False)
         else:
-            target.preset(' '.join(preset))
+            target.preset(preset)
     if kvs:
         for k, v in kvs:
             if k not in Controller._attributes:
@@ -494,4 +508,4 @@ def cli(args):
                         k = k2
                         break
             getattr(target, k)(v)
-    target.on(True, commit=True)
+    target.commit()
