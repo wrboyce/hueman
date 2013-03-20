@@ -52,6 +52,7 @@ class Controller(object):
         },
         'time': {
             'key': 'transitiontime',
+            'filter': 'parse_time',
         },
         'mode': {
             'key': 'colormode',
