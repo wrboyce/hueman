@@ -89,7 +89,7 @@ class Controller(object):
     def _get_state(self):
         self._cstate = self._bridge._get('{}/{}/{}'.format(self._endpoint, self.id, self._state_endpoint))['state']
 
-    def commit(self, commit=True):
+    def commit(self):
         self._bridge._put('{}/{}/{}'.format(self._endpoint, self.id, self._state_endpoint), self._nstate)
         self._cstate = self._nstate.copy()
         self._nstate = {}
@@ -324,7 +324,7 @@ class GroupController(object):
         """ Dispatch calls to members, values are returned as a list of two-tuples: (name, value). """
         def wrapper(new_val=None, commit=False):
             print '{}.{}({})'.format(self, key, new_val)
-            vals = map(lambda m: (m.name, getattr(m, key)(new_val)), self._members)
+            vals = map(lambda m: (m.name, getattr(m, key)() if new_val is None else getattr(m, key)(new_val)), self._members)
             if new_val is None:
                 return vals
             if commit:
