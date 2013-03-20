@@ -11,6 +11,12 @@ class Controller(object):
         'on': {
             'key': 'on',
         },
+        'bri': {
+            'key': 'bri',
+            'filter': 'parse_int',
+            'min': 0,
+            'max': 255
+        },
         'brightness': {
             'key': 'bri',
             'filter': 'parse_int',
@@ -22,6 +28,12 @@ class Controller(object):
             'filter': 'parse_int',
             'min': 0,
             'max': 65535,
+        },
+        'sat': {
+            'key': 'sat',
+            'filter': 'parse_int',
+            'min': 0,
+            'max': 255,
         },
         'saturation': {
             'key': 'sat',
@@ -35,6 +47,9 @@ class Controller(object):
         },
         'cie': {
             'key': 'xy',
+        },
+        'ct': {
+            'key': 'ct',
         },
         'temp': {
             'key': 'ct',
@@ -53,6 +68,9 @@ class Controller(object):
             'filter': 'parse_time',
         },
         'mode': {
+            'key': 'colormode',
+        },
+        'colormode': {
             'key': 'colormode',
         },
         'reachable': {
@@ -78,7 +96,7 @@ class Controller(object):
     def __init__(self, bridge, id, name, cstate=None, nstate=None):
         self._bridge = bridge
         self.id = id
-        self.name = name
+        self.name = name.replace(' ', '-').lower()
         self._cstate = cstate  # current state
         self._nstate = nstate if nstate is not None else {}  # next state
         if self._cstate is None:
@@ -112,6 +130,7 @@ class Controller(object):
         elif filter_fun is None:
             filter_fun = lambda v, c: v
         def gettersetter(new_val=None, commit=False):  # noqa
+            print '{}.{}({})'.format(self, key, new_val)
             if new_val is None:
                 return self._cstate[attr_cfg['key']]
             elif attr_cfg.get('readonly', False):
@@ -289,7 +308,7 @@ class GroupController(object):
         self._members = set()
 
     def __str__(self):
-        return '<{}(name="{}", members={})>'.format(self.__class__.__name__, self.name, [m for m in self._members])
+        return '<{}(name="{}", members=[{}])>'.format(self.__class__.__name__, self.name, ', '.join([str(m) for m in self._members]))
 
     def __len__(self):
         return len(self._members)
@@ -301,7 +320,10 @@ class GroupController(object):
 
     def __getitem__(self, key):
         """ Allow `groupcontroller[item_name]` style access """
-        return filter(lambda m: m.name == key, self._members).pop(0)
+        try:
+            return filter(lambda m: m.name == key, self._members).pop(0)
+        except IndexError:
+            raise KeyError
 
     def add_member(self, obj):
         """ Add a single Light/Group/Bridge or GroupController to the current GroupController. """
@@ -320,6 +342,7 @@ class GroupController(object):
     def __getattr__(self, key):
         """ Dispatch calls to members, values are returned as a list of two-tuples: (name, value). """
         def wrapper(new_val=None, commit=False):
+            print '{}.{}({})'.format(self, key, new_val)
             vals = map(lambda m: (m.name, getattr(m, key)() if new_val is None else getattr(m, key)(new_val)), self._members)
             if new_val is None:
                 return vals
@@ -327,6 +350,12 @@ class GroupController(object):
                 self.commit()
             return self
         return wrapper
+
+    def find(self, *names):
+        group = GroupController(name='{}:find'.format(self.name))
+        for member in self._members:
+            group.add_members(member.find(*names))
+        return group
 
     def commit_attributes(self, id, force=False):
         """ Create the `Group` (if possible!) and return it """
@@ -338,10 +367,6 @@ class GroupController(object):
         data = {'name': self.name, 'lights': [l.id for l in lights]}
         self._bridge._put('{}/{}'.format(self._endpoint, id), data)
         return self
-
-    def find(self):
-        raise NotImplemented
-    groups = lights = find
 
 
 class Group(Controller):
@@ -360,18 +385,15 @@ class Group(Controller):
 
     def light(self, name):
         if name is None:
-            return self._lights.values()
-        return self._lights[name]
+            return self._lights.members
+        try:
+            return self._lights[name]
+        except KeyError:
+            return None
     __getitem__ = light
 
     def lights(self, *names):
-        return filter(lambda l: l.name in names, self._lights.values())
-
-    def commit_attributes(self):
-        """ Update the Group Name and Members. """
-        data = {'name': self.name, 'lights': [l.id for l in self._lights]}
-        self._bridge._put('{}/{}'.format(self._endpoint, self.id), data)
-        return self
+        return filter(lambda l: l.name in names, self._lights)
 
 
 class Light(Controller):
@@ -380,12 +402,17 @@ class Light(Controller):
 
 
 class Bridge(Group):
-    def __init__(self, hostname, username, plugins=None, presets=None):
+    def __str__(self):
+        tmpl = '<Bridge(hostname="{}", groups=[{}], lights=[{}]>'
+        return tmpl.format(self._hostname, ', '.join([str(g) for g in self._groups]), ', '.join([str(l) for l in self._lights]))
+
+    def __init__(self, hostname, username, groups=None, plugins=None, presets=None):
         self._bridge = self
         self.id = 0  # Group with id=0 is reserved for all lights in system (conveniently)
         self._hostname = self.name = hostname
         self._username = username
-        self._get_members()
+        self._get_lights()
+        self._build_groups(groups)
         self._plugins = plugins if plugins is not None else {}
         self._presets = presets if presets is not None else {}
         self._load_global_presets()
@@ -393,14 +420,18 @@ class Bridge(Group):
         self._cstate = {}
         self._nstate = {}
 
-    def _get_members(self):
+    def _get_lights(self):
         d = self._get('')
         self._lights = GroupController(name='[{}].lights'.format(self.name))
         for l_id, l_data in d.get('lights', {}).iteritems():
             self._lights.add_member(Light(self, l_id, l_data['name'].replace(' ', '-'), l_data.get('state', None)))
+
+    def _build_groups(self, g_cfg):
         self._groups = GroupController(name='[{}].groups'.format(self.name))
-        for g_id, g_data in d.get('groups', {}).iteritems():
-            self._groups.add_member(Group(self, g_id, g_data['name'], g_data.get('state', None)))
+        for g_name, g_lights in g_cfg.iteritems():
+            g = GroupController(g_name)
+            g.add_members(self.find(*g_lights))
+            self._groups.add_member(g)
 
     def _load_global_presets(self):
         try:
@@ -424,17 +455,19 @@ class Bridge(Group):
         """ Lookup a group by name, if name is None return all groups. """
         if name is None:
             return self._groups.items()
-        return self._groups[name]
+        try:
+            return self._groups[name]
+        except KeyError:
+            return None
 
     def light(self, name):
         """ Lookup a light by name, if name is None return all lights. """
         if name is None:
-            return self._lights.items()
-        if '.' in name:
-            group, light = name.split('.')
-            return self.group(group).light(light)
-        else:
+            return GroupController(name='{}.light'.format(self.name)).add_members(self._lights)
+        try:
             return self._lights[name]
+        except KeyError:
+            return None
 
     def _find(self, name):
         """ name: group.light, group., .light, group, light """
@@ -453,19 +486,25 @@ class Bridge(Group):
         # room -> group=room light=None
         # lamp -> group=lamp light=None -- handle this case now
         if light_name is None and self.group(group_name) is None:
-            return self.light(light_name)
+            return self.light(group_name)
         if group_name is None:
             return self.light(light_name)
         return self.group(group_name).light(light_name)
 
     def find(self, *names):
+        print '{}.find({})'.format(self, names)
         group = GroupController()
         for name in names:
-            if isinstance(name, re):
-                group.add_members(ifilter(lambda l: name.match(l.name) is not None, self.lights()))
+            if isinstance(name, re._pattern_type):
+                print name.pattern
+                group.add_members(ifilter(lambda l: name.match(l.name) is not None, self._lights))
             elif isinstance(name, basestring):
-                group.add_member(self._find(name))
-        return group
+                obj = self.group(name)
+                if obj is None:
+                    obj = self.light(name)
+                if obj is not None:
+                    group.add_member(obj)
+        return group.members
 
 
 class Hueman(GroupController):
@@ -476,6 +515,10 @@ class Hueman(GroupController):
             mod = __import__(mod)
             return getattr(mod, cls)
         super(Hueman, self).__init__()
+        groups = {}
+        if cfg.get('groups'):
+            for group_name, group_lights in cfg.get('groups').iteritems():
+                groups[group_name] = group_lights
         plugins = {}
         if cfg.get('plugins'):
             for plugin_name, plugin_cfg in cfg.get('plugins').iteritems():
@@ -492,4 +535,7 @@ class Hueman(GroupController):
             for preset_name, preset_state in cfg.get('presets').iteritems():
                 presets[preset_name] = preset_state
         for bridge_cfg in cfg.get('bridges', []):
-            self.add_member(Bridge(bridge_cfg['hostname'], bridge_cfg['username'], plugins, presets))
+            self.add_member(Bridge(bridge_cfg['hostname'], bridge_cfg['username'], groups, plugins, presets))
+
+    def __str__(self):
+        return '<{}(members=[{}])>'.format(self.__class__.__name__, ', '.join([str(m) for m in self._members]))

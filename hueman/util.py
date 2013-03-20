@@ -25,15 +25,17 @@ def cli(args=None):
     ## Find the target groups/lights
     if not any([args.all, args.find, args.group, args.light]):
         return  # must specify a target!
-    target = hue if args.all else GroupController(hue)
+    target = hue if args.all else GroupController(name='cli')
     if args.find:
+        targets = []
         for t in args.find.split(','):
-            if '*' in t or '?' in t or '#' in t:  # wildcards
-                t = t.replace('*', '.*').replace('?', '.').replace('#', '[0-9]')
-                t = '/{}/'.format(t)
             if t[0] == '/' and t[-1] == '/':
                 t = re.compile(t.strip('/'), re.I)
-            target.add_member(hue.find(t))
+            elif '*' in t or '?' in t or '#' in t:  # wildcards
+                t = t.replace('*', '.*').replace('?', '.').replace('#', '[0-9]')
+                t = '/{}/'.format(t)
+            targets.append(t)
+        target.add_members(hue.find(*targets))
     if args.group:
         for g in args.group.split(','):
             target.add_member(hue.group(g))
