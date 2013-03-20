@@ -479,18 +479,20 @@ class Hueman(GroupController):
             return getattr(mod, cls)
         super(Hueman, self).__init__()
         plugins = {}
+        if cfg.get('plugins'):
+            for plugin_name, plugin_cfg in cfg.get('plugins').iteritems():
+                plugin_settings = {}
+                if isinstance(plugin_cfg, basestring):
+                    plugin_classpath = plugin_cfg
+                else:
+                    plugin_classpath = plugin_cfg['path']
+                    plugin_settings = plugin_cfg.get('settings', {})
+                plugin_class = import_classpath(plugin_classpath)
+                plugins[plugin_name] = plugin_class(**plugin_settings)
         presets = {}
-        for plugin_name, plugin_cfg in cfg.get('plugins', {}).iteritems():
-            plugin_settings = {}
-            if isinstance(plugin_cfg, basestring):
-                plugin_classpath = plugin_cfg
-            else:
-                plugin_classpath = plugin_cfg['path']
-                plugin_settings = plugin_cfg.get('settings', {})
-            plugin_class = import_classpath(plugin_classpath)
-            plugins[plugin_name] = plugin_class(**plugin_settings)
-        for preset_name, preset_state in cfg.get('presets', {}).iteritems():
-            presets[preset_name] = preset_state
+        if cfg.get('presets'):
+            for preset_name, preset_state in cfg.get('presets').iteritems():
+                presets[preset_name] = preset_state
         for bridge_cfg in cfg.get('bridges', []):
             self.add_member(Bridge(bridge_cfg['hostname'], bridge_cfg['username'], plugins, presets))
 
