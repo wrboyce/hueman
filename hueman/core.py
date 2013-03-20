@@ -331,6 +331,17 @@ class GroupController(object):
             return self
         return wrapper
 
+    def commit_attributes(self, id, force=False):
+        """ Create the `Group` (if possible!) and return it """
+        def iflatten(lol):
+            return lol.magic
+        lights = iflatten(member.lights() for member in self)
+        if len(set(l._bridge for l in lights)) > 1:
+            raise ValueError("Cannot commit cross-Bridge Groups.")
+        data = {'name': self.name, 'lights': [l.id for l in lights]}
+        self._bridge._put('{}/{}'.format(self._endpoint, id), data)
+        return self
+
     def find(self):
         raise NotImplemented
     groups = lights = find
@@ -358,6 +369,12 @@ class Group(Controller):
 
     def lights(self, *names):
         return filter(lambda l: l.name in names, self._lights.values())
+
+    def commit_attributes(self):
+        """ Update the Group Name and Members. """
+        data = {'name': self.name, 'lights': [l.id for l in self._lights]}
+        self._bridge._put('{}/{}'.format(self._endpoint, self.id), data)
+        return self
 
 
 class Light(Controller):
