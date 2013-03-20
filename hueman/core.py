@@ -114,7 +114,6 @@ class Controller(object):
         elif filter_fun is None:
             filter_fun = lambda v, c: v
         def gettersetter(new_val=None, commit=False):  # noqa
-            print '{}.{}({})'.format(self, key, new_val)
             if new_val is None:
                 return self._cstate[attr_cfg['key']]
             elif attr_cfg.get('readonly', False):
@@ -323,7 +322,6 @@ class GroupController(object):
     def __getattr__(self, key):
         """ Dispatch calls to members, values are returned as a list of two-tuples: (name, value). """
         def wrapper(new_val=None, commit=False):
-            print '{}.{}({})'.format(self, key, new_val)
             vals = map(lambda m: (m.name, getattr(m, key)() if new_val is None else getattr(m, key)(new_val)), self._members)
             if new_val is None:
                 return vals
@@ -422,10 +420,7 @@ class Bridge(Group):
         return requests.get('http://{}/api/{}/{}'.format(self._hostname, self._username, path)).json()
 
     def _put(self, path, data):
-        print path, data
-        d = requests.put('http://{}/api/{}/{}'.format(self._hostname, self._username, path), json.dumps(data)).json()
-        print d
-        return d
+        return requests.put('http://{}/api/{}/{}'.format(self._hostname, self._username, path), json.dumps(data)).json()
 
     def group(self, name):
         """ Lookup a group by name, if name is None return all groups. """
