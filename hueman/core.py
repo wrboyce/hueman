@@ -217,17 +217,16 @@ class Controller(object):
 
     def preset(self, name, commit=False):
         """ Load a preset state """
+        def _transition(presets):  # Transitions have to be applied immediately [TODO] state-stack for transitions
+            for data in presets:
+                if data is not presets[-1]:
+                    data['time'] = 0
+                self._apply(data, True)
+            return self
         preset_data = self._bridge._preset(name)
         if isinstance(preset_data, list):
-            return self._transition(preset_data)
+            return _transition(preset_data)
         return self._apply(preset_data, commit)
-
-    def _transition(self, presets, commit=True):
-        for data in presets:
-            if data is not presets[-1]:
-                data['time'] = 0
-            self._apply(data, True)
-        return self
 
     def _apply(self, state, commit=False):
         for key, val in state.iteritems():
