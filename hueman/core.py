@@ -238,7 +238,46 @@ class Controller(object):
 
     def _apply_plugin(self, plugin_name, commit, **kwargs):
         """ Placeholder code to remind me what I was thinking... plugins: name: 'path.to.Plugin'. """
-        self._plugins[plugin_name](self, **kwargs)
+        self._bridge._plugins[plugin_name](self, **kwargs)
+        if commit:
+            self.commit()
+        return self
+
+    def _apply_command(self, command, commit=False):
+        """
+            Parse a command into a state change, and optionally commit it.
+
+            Commands can look like:
+                * on
+                * off
+                * preset name
+                * arg:val arg2:val2
+                * preset name arg:val arg2:val2
+                * arg:val preset name
+                * arg:val preset name arg2:val2
+        """
+        preset, kvs = [], []
+        for s in command:
+            if ':' not in s:
+                preset.append(s)
+            else:
+                kvs.append(s.split(':'))
+        if preset:
+            preset = ' '.join(preset)
+            if preset == 'on':
+                self.on(True)
+            elif preset == 'off':
+                self.on(False)
+            else:
+                self.preset(preset)
+        if kvs:
+            for k, v in kvs:
+                if k not in self._attributes:
+                    for k2 in self._attributes.keys():
+                        if k2.startswith(k):
+                            k = k2
+                            break
+                getattr(self, k)(v)
         if commit:
             self.commit()
         return self
@@ -452,7 +491,7 @@ def cli(args):
     parser.add_argument('-f', '--find', action='store')
     parser.add_argument('-g', '--group', action='store', dest='group')
     parser.add_argument('-l', '--light', action='store')
-    parser.add_argument('command', metavar='STATE', nargs='*')
+    parser.add_argument('command', metavar='COMMAND', nargs='*')
     args = parser.parse_args(args)
     cfg = yaml.load(file(os.path.expanduser(args.cfg_file)).read())
     hue = Hueman(cfg)  # init Bridges and Plugins, and load Presets
@@ -478,34 +517,5 @@ def cli(args):
                 g, l = l.split()
                 _target = hue.group(g)
             target.add_member(_target.light(l))
-    ## process the command, examples:
-    #  * on
-    #  * off
-    #  * preset name
-    #  * arg:val arg2:val2
-    #  * preset name arg:val arg2:val2
-    #  * arg:val preset name
-    #  * arg:val preset name arg2:val2
-    preset, kvs = [], []
-    for s in args.command:
-        if ':' not in s:
-            preset.append(s)
-        else:
-            kvs.append(s.split(':'))
-    if preset:
-        preset = ' '.join(preset)
-        if preset == 'on':
-            target.on(True)
-        elif preset == 'off':
-            target.on(False)
-        else:
-            target.preset(preset)
-    if kvs:
-        for k, v in kvs:
-            if k not in Controller._attributes:
-                for k2 in Controller._attributes.keys():
-                    if k2.startswith(k):
-                        k = k2
-                        break
-            getattr(target, k)(v)
-    target.commit()
+    ## process the command
+    target._apply_command(args.command).commit()
