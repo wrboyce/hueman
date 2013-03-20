@@ -19,5 +19,5 @@ setup(
     license='BSD',
     install_requires=requires,
     packages=['hueman'],
-    entry_points={'console_scripts': {'hueman = hueman:cli'}}
+    entry_points={'console_scripts': {'hueman = hueman.util:cli'}}
 )
