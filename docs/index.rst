@@ -44,3 +44,11 @@ If you are looking for information on a specific function, class or method, this
    api/controllers
    api/groupcontrollers
    api/plugins
+
+Class Index
+-----------
+
+.. toctree::
+   :maxdepth: 3
+
+   hueman
