@@ -134,7 +134,7 @@ class Controller(object):
         elif filter_fun is None:
             filter_fun = lambda v, c: v
         def gettersetter(new_val=None, commit=False):  # noqa
-            print '{}.{}({})'.format(self, key, new_val)
+            #print '{}.{}({})'.format(self, key, new_val)
             if new_val is None:
                 return self._cstate[attr_cfg['key']]
             elif attr_cfg.get('readonly', False):
@@ -346,7 +346,7 @@ class GroupController(object):
     def __getattr__(self, key):
         """ Dispatch calls to members, values are returned as a list of two-tuples: (name, value). """
         def wrapper(new_val=None, commit=False):
-            print '{}.{}({})'.format(self, key, new_val)
+            #print '{}.{}({})'.format(self, key, new_val)
             vals = map(lambda m: (m.name, getattr(m, key)() if new_val is None else getattr(m, key)(new_val)), self._members)
             if new_val is None:
                 return vals
@@ -468,7 +468,6 @@ class Bridge(Group):
 
     def light(self, name):
         """ Lookup a light by name, if name is None return all lights. """
-        print 'light({})'.format(name), self._lights
         if name is None:
             group = GroupController(name='{}.light'.format(self.name))
             group.add_members(self._lights)
@@ -501,11 +500,9 @@ class Bridge(Group):
         return self.group(group_name).light(light_name)
 
     def find(self, *names):
-        print '{}.find({})'.format(self, names)
         group = GroupController()
         for name in names:
             if isinstance(name, re._pattern_type):
-                print name.pattern
                 group.add_members(ifilter(lambda l: name.match(l.name) is not None, self._lights))
             elif isinstance(name, basestring):
                 obj = self.group(name)
