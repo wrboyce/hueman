@@ -1,9 +1,3 @@
-BROKEN AND UNTESTED
-===================
-
-My Hue Starter Kit arrives on Tuesday (19th March 2013), until then everything here is liable to be very broken (but full of awesome ideas).
-
-
 hueman
 ======
 
