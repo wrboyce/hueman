@@ -4,53 +4,157 @@ hueman
 A human interface for managing your hues.
 
 
-Overview
---------
+Installation
+------------
 
-Blurb.
+Simple enough, either install directly from The Cheese Shop using your choice of `easy_install` or `pip`:
+
+    % easy_install hueman
+    % pip install hueman
+
+Or, directly from github if you are so inclined:
+
+    % pip install git+https://github.com/wrboyce/hueman.git#egg=hueman
+    % pip install https://github.com/wrboyce/hueman/archive/master.tar.gz
+
+
+Configuration
+-------------
+
+The default path for the configuration file is `~/.hueman.yml`, this can be overridden with the `-c`/`--config` options.
+
+### Bridges
+
+You can generate an initial config with `hueman --setup`. This will detect your Hue Bridges and attempt to pair with each one:
+
+    % hueman --setup
+    Found bridge at 1.2.3.4
+    Press link button on bridge 1.2.3.4
+    Waiting...
+    Successfully registered with bridge 1.2.3.4
+
+Alternatively, you can add the relevant configuration sections manually:
+
+    bridges:
+      - hostname: 1.2.3.4
+        username: apphash
+
+### Groups
+
+In the absense of support for creating Groups in the Philips Hue API, we have to settle for client-side groups.
+
+    groups:
+      office:
+        - office.desklamp
+        - office.floorlamp
+      bedroom:
+        - bedroom.hers
+        - bedroom.his
+
+### Plugins
+
+Chances are you won't need to define this section for a while, not least until I have finalised the Plugin API. A plugin is basically a custom class which is passed the controller (Light, Group, Bridge) when it is called.
+
+    class MyBrightPlugin(object):
+        def __call__(self, controller):
+            controller.brightness('100%')
+    class MyBrightnessSettingsPlugin(object)
+        def __init__(self, brightness='100%')
+            self.brightness = brightness
+        def __call__(self, controller):
+            controller.brightness('100%')
+    class MyBrightnessArgumentPlugin(object):
+        def __init__(self, controller, arg):
+            controller.brightness(arg)
+
+To load a plugin, you must give it a name and tell hueman where to find it:
+
+    plugins:
+      my_bright_plugin: my_hueman_plugins.MyBrightPlugin
+      my_variable_brightness_plugin:
+        path: my_hueman_plugins.MyBrightnessSettingsPlugin
+        settings:
+          brightness: 50%
+      my_brightness_argument_plugin: my_hueman_plugins.MyBrightnessArgumentPlugin
+
+
+### Presets
+
+Presets are a simple static state that is applied to the controller. A preset can also define a transition from one state to another.
+
+    my_bright_preset:
+      brightness: 100%
+    my_bright_transition:
+      - brightness: 0
+      - brightness: 100%
+        time: 10s
+
+### Scenes
+
+Scenes are similar to presets, only they define explicitly which controllers they apply to:
+
+    my_bright_office_scene:
+      office.desklamp:
+        brightness: 100%
+      office.floorlamp:
+        brightness: 100%
 
 
 Usage
 -----
 
-### Configuration
-
-You will need to perform some basic configuration in `~/.hueman.yml`:
-
-    hues:
-      - hostname: limelight.fbcnt.in
-        password: your-app-hash-here
-
 ### Commandline
+
+The basic usage of hueman from the commandline looks like:
+
+    % hueman [TARGET_OPTS] [COMMAND]
+
+`TARGET_OPTS` specify which controllers the command should be passed to, and `COMMAND` tells describes the new state.
+
+    % hueman -a on  # turn all lights on
+    % hueman -a brightness:100% # set all lights to 100% brightness
+    % hueman -a my bright plugin # invoke MyBrightPlugin on all lights
+    % hueman -a my bright preset # set all lights to preset "my_bright_preset"
+
+Whole words in command are joined together with underscores, and parsed in the following order:
+
+    on -> turn the controller on
+    off -> turn the controller off
+    some_other_string -> look for a plugin, then a preset
+    some_var:new_val -> look for plugin and call with new_val, failing that set some_var to new_val
+    some_var:val1,val2 -> as above, but fail is unable to find a plugin
+
+If you omit the `TARGET_OPTS` section, then hueman assumes you are invoking a scene. Any additional options will be applied to all controllers in the scene.
+
+    % hueman my bright office scene
+    % hueman my bright office scene saturation:100%
+
+#### Finding the Light
 
 List your Lights & Groups:
 
     % hueman -L
-    Bedroom:
-        His
-        Hers
-    Lounge:
-        Ceiling
-        FloorLamp
-    Office:
-        DeskLamp
-        FloorLamp
+    bedroom.hers
+    bedroom.his
+    office.desklamp
+    office.floorlamp
     % hueman -Lv
-    [3] Bedroom:
-        [3] His (<<state>>)
-        [4] Hers (<<state>>)
-    [2] Lounge:
-        [5] Ceiling (<<state>>)
-        [2] FloorLamp (<<state>>)
-    [1] Office:
-        [1] DeskLamp (<<state>>)
-        [6] FloorLamp (<<state>>)
-
-Turn all the lights on
-
-    % hueman -a on
-
-#### Finding the Light
+    bedroom.hers (<<state>>)
+    bedroom.his (<<state>>)
+    office.desklamp (<<state>>)
+    office.floorlamp (<<state>>)
+    % hueman -Lg
+    all:
+      bedroom.hers
+      bedroom.his
+      office.desklamp
+      office.floorlamp
+    bedroom:
+      bedroom.hers
+      bedroom.his
+    office:
+      office.desklamp
+      office.floorlamp
 
 The main method of finding targets is via the `-f`/`--find` argument. You can find multiple targets by either passing `-f` multiple times, or passing a comma-seperated list. All names are case intensitive.
 
@@ -80,53 +184,6 @@ If `find` is too vague, you can target groups/lights explicity, too:
     % hueman -g bedroom on
     % hueman -l bedroom.his,bedroom.hers on
     % hueman -g bedroom -l his,hers on
-
-#### Presets
-
-Invoking presets is easy...
-
-    % hueman -a red alert
-
-Or just setting values directly:
-
-    % hueman -a brightness:100% colour:blue
-
-And, you guessed it… Combining the two:
-
-    % hueman -a red alert colour:yellow brightness:20%
-
-Some of those words are mighty long, so you can shorten them to their shortest unique string:
-
-    $ hueman -a bri:150 hue:0
-
-
-Settings
---------
-
-### Presets
-
-Hueman comes with a set of predefined presets, but you can also define your own. Add them to the `presets` directive in your `hueman.yml`:
-
-    presets:
-      wake_up:
-        brightness: 100%
-        temp: 0%
-      underwater:
-        color: blue
-        brightness: 30%
-
-
-### Transitions
-
-Presets can transition between two states, the implied `time` for the initial `state` is `0`:
-
-    presets:
-      wake_up_slowly:
-        - brightness: 30%
-          temp: 80%
-        - brightness: +300%
-          temp: 0%
-          time: 30m
 
 
 API
@@ -189,7 +246,7 @@ And set by passing a relevant argument:
     >>> light.time(10)  # delay for one second
     >>> light.time('10m')  # delay for 10 minutes
 
-`colour` should accept most colours you can think of, express them as one word and be creative!
+The `colour` plugin should accept most colours you can think of, express them as one word and be creative!
 
     >>> light.colour('red')
     >>> light.colour('darkred')
@@ -198,6 +255,7 @@ If you can't find the colour you're looking for, then simply you can send an rgb
 
     >>> light.rgb('FF0000')
     >>> light.rgb('#00FF00')
+    >>> light.rgb({'red': 0, 'green': 0, 'blue': 255})
 
 And of course, you can load presets:
 
@@ -226,7 +284,7 @@ Or you can just search `Bridge` directly using `.find` which returns a `GroupCon
 
 ### Group Controllers
 
-I haven't quite decided how `GroupController` will work yet, but it'll allow you to dispatch commands to arbitary groups of lights. Something like this:
+GroupControllers group together items and allow commands to be dispatched to them as groups.
 
     >>> gc = GroupController('bedroom.*', '*.*lamp')
     >>> gc.preset('relax').commit()
@@ -265,19 +323,13 @@ A configuration is a dictionary with a simple structure, the `plugins` and `pres
 TODO
 ====
 
-* refactor & add setup.py
-* commandline entrypoint
-* test with a real Hue!
 * unit tests
-* group creation/management
 * schedule management
 * api: reading state from Hue/Group/GroupController
 * api: `parse_colour` -- check for colours in `_nstate`
 * api: add `Controller.reset` to drop `_nstate`
 * redo parse_XX functions and 'filter' parameter (preprocessor -- always a method)
-* plugin loading
 * Move ("rgb" and "colour") into `Plugins` (`Class(**settings)(target)`)
 * `Group(Controller, GroupController)`?
 * `Hueman` should accept host/user args directly
-* move command processing onto `Controller._parse_command`
-* protect against access to _vars in above
+* protect against access to _vars in _parse_command
