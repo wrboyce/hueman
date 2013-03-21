@@ -5,7 +5,7 @@ import re
 
 import yaml
 
-from core import GroupController, Hueman
+from hueman.groups import GroupController, Hueman
 
 
 def cli(args=None):

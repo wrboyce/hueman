@@ -9,10 +9,18 @@ hueman Package
     :undoc-members:
     :show-inheritance:
 
-:mod:`core` Module
-------------------
+:mod:`entities` Module
+----------------------
 
-.. automodule:: hueman.core
+.. automodule:: hueman.entities
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+:mod:`groups` Module
+--------------------
+
+.. automodule:: hueman.groups
     :members:
     :undoc-members:
     :show-inheritance:
