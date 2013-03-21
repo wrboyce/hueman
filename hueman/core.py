@@ -112,6 +112,10 @@ class Controller(object):
         self._nstate = {}
         return self
 
+    @property
+    def state(self):
+        return self._cstate.copy()
+
     ## State/value juggling magic
     ## usage: controller.brightness() -> current_brightness
     ##        controller.brightness(100)
@@ -393,6 +397,8 @@ class Group(Controller):
     __getitem__ = light
 
     def lights(self, *names):
+        if not names:
+            return self.light(None)
         return filter(lambda l: l.name in names, self._lights)
 
 
@@ -462,8 +468,11 @@ class Bridge(Group):
 
     def light(self, name):
         """ Lookup a light by name, if name is None return all lights. """
+        print 'light({})'.format(name), self._lights
         if name is None:
-            return GroupController(name='{}.light'.format(self.name)).add_members(self._lights)
+            group = GroupController(name='{}.light'.format(self.name))
+            group.add_members(self._lights)
+            return group
         try:
             return self._lights[name]
         except KeyError:

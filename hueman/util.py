@@ -1,4 +1,5 @@
 import argparse
+from operator import attrgetter
 import os
 import re
 
@@ -12,19 +13,33 @@ def cli(args=None):
     ## Build arguments from configfile & commandline
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', action='store', dest='cfg_file', default='~/.hueman.yml')
-    parser.add_argument('-a', '--all', action='store_true')
-    parser.add_argument('-f', '--find', action='store')
-    parser.add_argument('-g', '--group', action='store', dest='group')
-    parser.add_argument('-l', '--light', action='store')
-    parser.add_argument('command', metavar='COMMAND', nargs='*')
+    parser.add_argument('-L', '--list', action='store_true')
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-a', '--all', action='store_true', help='Apply command to all lights')
+    parser.add_argument('-f', '--find', action='store', help='Find a group/light - supports wildcards and /regex/')
+    parser.add_argument('-g', '--group', action='store', dest='group', help='Apply command to a specific group')
+    parser.add_argument('-l', '--light', action='store', help='Apply command to a specific light')
+    parser.add_argument('command', metavar='COMMAND', nargs='*', help='Scene name/State change')
     args = parser.parse_args(args)
 
     ## Initialise the Hueman
     hue = loader(args.cfg_file)
 
+    if args.list:
+        lights = set(light for bridge, lights in hue.lights() for light in lights)
+        for light in sorted(lights, key=attrgetter('name' if not args.verbose else 'id')):
+            out = '{}'.format(light.name)
+            if args.verbose:
+                out = '[{}] {} (<<{}>>)'.format(light.id, out, light.state)
+            print out
+        exit()
     ## Find the target groups/lights
     if not any([args.all, args.find, args.group, args.light]):
-        return  # must specify a target!
+        return  # must specify a target! TODO scene
+        try:
+            return hue.scene('_'.join(args.command))
+        except KeyError:
+            exit('Must specify a target or valid scene')
     target = hue if args.all else GroupController(name='cli')
     if args.find:
         targets = []
@@ -41,11 +56,7 @@ def cli(args=None):
             target.add_member(hue.group(g))
     if args.light:
         for l in args.light.split(','):
-            _target = hue
-            if '.' in l:
-                g, l = l.split()
-                _target = hue.group(g)
-            target.add_member(_target.light(l))
+            target.add_member(hue.light(l))
     ## process the command
     target._apply_command(args.command).commit()
 
