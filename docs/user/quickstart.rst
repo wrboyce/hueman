@@ -63,10 +63,8 @@ In addition, Hueman provides these aliases:
 * time (transitiontime)
 * mode (colormode)
 
-You can also shorten any value to its shortest unique prefix (b -> bri, s -> sat)
+You can also shorten any value to its shortest unique prefix (b -> bri, s -> sat)::
+
+    % hueman -a bri:100 s:100 time:10
 
 Refer to the `Hue API docs <http://developers.meethue.com>`_ for more information on these attributes.
-
-    ::
-
-    % hueman -a bri:100 sat:100 time:10

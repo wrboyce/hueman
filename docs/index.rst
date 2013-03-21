@@ -6,7 +6,7 @@ Hueman is a application and library for managing Philips Hue Connected bulbs, wr
 User Guide
 ----------
 
-This part of the documentation, which is mostly prose, takes you step-by-step through initial configuration and and getting the most out of Hueman.
+This part of the documentation, which is mostly prose, takes you step-by-step through initial configuration and getting to know Hueman.
 
 .. toctree::
    :maxdepth: 2
@@ -19,7 +19,28 @@ This part of the documentation, which is mostly prose, takes you step-by-step th
    user/scenes
 
 
+Advanced Usage
+--------------
+
+This section covers advanced topics to help you make the most out of Hueman.
+
+.. toctree::
+   :maxdepth: 2
+
+   advanced/attributes
+   advanced/plugins
+   advanced/inventory
+
+
 API Documentation
 -----------------
 
-If you are looking for information on a specific function, class or method, this part of the documentation is for you... Unfortunately, it isn't written yet!
+If you are looking for information on a specific function, class or method, this part of the documentation is for you.
+
+.. toctree::
+   :maxdepth: 2
+
+   api/introduction
+   api/controllers
+   api/groupcontrollers
+   api/plugins
