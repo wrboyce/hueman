@@ -30,7 +30,9 @@ Or even combine them::
 Transitions
 -----------
 
-Presets can also hold two states and have the lights transition into the second state over a predefined time::
+Presets can also hold two states and have the lights transition into the second state over a predefined time:
+
+..  code-block:: yaml
 
     presets:
       slowly_bright:

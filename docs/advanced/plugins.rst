@@ -17,14 +17,16 @@ The colour plugin allows you to set your bulbs to a "natural" colour::
 RGB
 ---
 
-If you can't quite find the colour you're looking for, you can instead provide an RGB hex:
+If you can't quite find the colour you're looking for, you can instead provide an RGB hex::
 
     % hueman -a rgb:ff0000
 
 Always Take the Weather With You
 --------------------------------
 
-The weather plugin requires some configuration before you can use it. Plugin settings are defined in your config file::
+The weather plugin requires some configuration before you can use it. Plugin settings are defined in your config file:
+
+..  code-block:: yaml
 
     plugins:
       weather:
@@ -61,7 +63,9 @@ Plugins are a simple class which implement the ``__call__`` function, with setti
         def __call__(self, controller):
             self.controller.brightness(default_brightness)
 
-The ``__call__`` method should accept at a minimum one argument (in addition to ``self``) which is the target of the action. Plugins must be registered in your config file::
+The ``__call__`` method should accept at a minimum one argument (in addition to ``self``) which is the target of the action. Plugins must be registered in your config file:
+
+..  code-block:: yaml
 
     presets:
       myplug1: module.path.MyPlugin1

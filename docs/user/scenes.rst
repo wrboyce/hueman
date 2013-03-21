@@ -6,7 +6,9 @@ Scenes are a culmination of Groups and Presets. They allow you apply a set of ac
 Setting the Scene
 -----------------
 
-Scenes are defined like so, mapping lights/groups to states::
+Scenes are defined like so, mapping lights/groups to states:
+
+..  code-block:: yaml
 
     scenes:
       work_mode:

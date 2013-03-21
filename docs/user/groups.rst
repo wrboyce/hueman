@@ -4,7 +4,9 @@ Groups
 Brighter Together
 -----------------
 
-Due to limitations in the Philips Hue API, we have to define groups client-side. Groups are defined in your config file::
+Due to limitations in the Philips Hue API, we have to define groups client-side. Groups are defined in your config file:
+
+..  code-block:: yaml
 
     groups:
       bedroom:
