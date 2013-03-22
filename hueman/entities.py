@@ -10,75 +10,45 @@ from hueman.groups import GroupController
 
 class Controller(object):
     _attributes = {
-        'on': {
-            'key': 'on',
-        },
+        'on': {},
         'bri': {
-            'key': 'bri',
-            'filter': 'parse_int',
-            'min': 0,
-            'max': 255
-        },
-        'brightness': {
-            'key': 'bri',
-            'filter': 'parse_int',
+            'preprocessor': 'int',
             'min': 0,
             'max': 255
         },
         'hue': {
-            'key': 'hue',
-            'filter': 'parse_int',
+            'preprocess': 'int',
             'min': 0,
             'max': 65535,
         },
         'sat': {
-            'key': 'sat',
-            'filter': 'parse_int',
+            'preprocessor': 'int',
             'min': 0,
             'max': 255,
         },
-        'saturation': {
-            'key': 'sat',
-            'filter': 'parse_int',
-            'min': 0,
-            'max': 255,
-        },
-        'xyz': {
-            'filter': 'parse_xyz',
-            'key': 'xy',
-        },
-        'cie': {
-            'key': 'xy',
-        },
+        'xy': {},
         'ct': {
-            'key': 'ct',
-        },
-        'temp': {
-            'key': 'ct',
-            'filter': 'parse_int',
+            'preprocessor': 'int',
             'min': '153',
             'max': '500',
         },
-        'alert': {
-            'key': 'alert',
-        },
-        'effect': {
-            'key': 'effect',
-        },
-        'time': {
-            'key': 'transitiontime',
-            'filter': 'parse_time',
-        },
-        'mode': {
-            'key': 'colormode',
-        },
-        'colormode': {
-            'key': 'colormode',
+        'colormode': {},
+        'transitiontime': {
+            'preprocessor': 'time',
         },
         'reachable': {
-            'key': 'reachable',
             'readonly': True,
-        }
+        },
+        'alert': {},
+        'effect': {},
+        ## Aliases
+        'brightness': 'bri',
+        'saturation': 'sat',
+        'cie': 'xy',
+        'temp': 'ct',
+        'time': 'transitiontime',
+        'colourmode': 'colormode',
+        'mode': 'colormode',
     }
     id, name = None, None
     _bridge, _cstate, _nstate = None, None, None
@@ -114,6 +84,10 @@ class Controller(object):
         self._nstate = {}
         return self
 
+    def reset(self):
+        self._nstate = self._cstate.copy()
+        return self
+
     @property
     def state(self):
         return self._cstate.copy()
@@ -122,33 +96,40 @@ class Controller(object):
     ## usage: controller.brightness() -> current_brightness
     ##        controller.brightness(100)
     def __getattr__(self, key):
+        ## First we check for a plugin
         if key in self._bridge._plugins:
             def pluginwrapper(self, commit=False, **kwargs):
                 self._apply_plugin(key, commit, **kwargs)
                 return self
             return pluginwrapper
-        if not key in Controller._attributes:
+        try:
+            attr_cfg = Light._attributes[key]
+            while isinstance(attr_cfg, basestring):
+                key = attr_cfg
+                attr_cfg = Light._attributes[attr_cfg]
+        except KeyError:
             raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__.__name__, key))
-        attr_cfg = Light._attributes[key]
-        filter_fun = attr_cfg.get('filter', None)
-        if filter_fun is not None and not callable(filter_fun):
-            filter_fun = getattr(self, filter_fun, None)
-        elif filter_fun is None:
-            filter_fun = lambda v, c: v
+        ## Get the preprocessor, if one is defined
+        preprocessor = attr_cfg.get('preprocessor', None)
+        if isinstance(preprocessor, basestring):  # strings map to self._pp_{preprocessor}
+            preprocessor = getattr(self, '_pp_{}'.format(preprocessor), None)
+        elif not callable(preprocessor):  # if not, wrap in a lambda so we can call blindly later
+            preprocessor = lambda v, c: v
+        ## Return a wrapper for getting/setting the attribute
         def gettersetter(new_val=None, commit=False):  # noqa
             #print '{}.{}({})'.format(self, key, new_val)
             if new_val is None:
-                return self._cstate[attr_cfg['key']]
+                return self._cstate[key]
             elif attr_cfg.get('readonly', False):
-                raise ValueError("Attempted to set readonly value")
-            self._nstate[attr_cfg['key']] = filter_fun(new_val, attr_cfg)
+                raise ValueError("Attempted to set readonly value '{}'".format(key))
+            self._nstate[key] = preprocessor(new_val, attr_cfg)
             if commit:
                 self.commit()
             return self
         return gettersetter
 
-    ## Parsing functions
-    def parse_int(self, val, cfg):
+    ## Preprocessors
+    def _pp_int(self, val, cfg):
         """ Parse a numerical value, keeping it within a min/max range, and allowing percentage changes. """
         min_val, max_val = cfg.get('min', 0), cfg.get('max', None)
         try:
@@ -180,13 +161,7 @@ class Controller(object):
             val = max_val
         return val
 
-    def parse_xyz(self, val, _cfg):
-        """ Parse a colour in the XYZ space, dropping the [unsupported] Z property. """
-        if len(val) > 2:
-            val = val[:2]
-        return val
-
-    def parse_time(self, val, _cfg):
+    def _pp_time(self, val, _cfg):
         """ Parse a time from "shorthand" format: 10m, 30s, 1m30s. """
         time = 0
         if 'm' in val:
@@ -280,6 +255,8 @@ class Controller(object):
         """
         preset, kvs = [], []
         for s in command:
+            if s.startswith('_'):
+                continue
             if ':' not in s:
                 preset.append(s)
             else:

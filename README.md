@@ -325,11 +325,9 @@ TODO
 
 * unit tests
 * schedule management
-* api: reading state from Hue/Group/GroupController
+* api: reading state from GroupControllers
 * api: `parse_colour` -- check for colours in `_nstate`
-* api: add `Controller.reset` to drop `_nstate`
 * redo parse_XX functions and 'filter' parameter (preprocessor -- always a method)
 * Move ("rgb" and "colour") into `Plugins` (`Class(**settings)(target)`)
 * `Group(Controller, GroupController)`?
 * `Hueman` should accept host/user args directly
-* protect against access to _vars in _parse_command

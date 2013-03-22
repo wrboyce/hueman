@@ -29,7 +29,7 @@ def cli(args=None):
     preset.add_argument('-l', '--light', action='store', help='Apply command to a specific light')
 
     # Command
-    preset.add_argument('command', metavar='COMMAND', nargs='*', help='Scene name/State change')
+    preset.add_argument('command', metavar='COMMAND', nargs='*')
     args = preset.parse_args(args)
 
     ## Initialise the Hueman
