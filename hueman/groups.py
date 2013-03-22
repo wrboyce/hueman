@@ -51,10 +51,13 @@ class GroupController(object):
         return wrapper
 
     def find(self, *names):
-        group = GroupController(name='{}:find'.format(self.name))
+        group = GroupController(name='{}'.format(' ,'.join(names)))
         for member in self._members:
             group.add_members(member.find(*names))
+        if len(group) == 1:
+            return group.members[0]
         return group
+    group = light = find
 
     def commit_attributes(self, id, force=False):
         """ Create the `Group` (if possible!) and return it """
@@ -76,10 +79,6 @@ class Hueman(GroupController):
             mod = __import__(mod)
             return getattr(mod, cls)
         super(Hueman, self).__init__()
-        groups = {}
-        if cfg.get('groups'):
-            for group_name, group_lights in cfg.get('groups').iteritems():
-                groups[group_name] = group_lights
         plugins = {}
         if cfg.get('plugins'):
             for plugin_name, plugin_cfg in cfg.get('plugins').iteritems():
@@ -96,6 +95,7 @@ class Hueman(GroupController):
             for preset_name, preset_state in cfg.get('presets').iteritems():
                 presets[preset_name] = preset_state
         from hueman.entities import Bridge
+        groups = cfg.get('groups') or {}
         for bridge_cfg in cfg.get('bridges', []):
             self.add_member(Bridge(bridge_cfg['hostname'], bridge_cfg['username'], groups, plugins, presets))
 

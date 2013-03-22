@@ -392,7 +392,7 @@ class Bridge(Group):
     def group(self, name):
         """ Lookup a group by name, if name is None return all groups. """
         if name is None:
-            return self._groups.items()
+            return self._groups
         try:
             return self._groups[name]
         except KeyError:
@@ -409,7 +409,7 @@ class Bridge(Group):
         except KeyError:
             return None
 
-    def _find(self, name):
+    def _find(self, name):  # DEAD CODE
         """ name: group.light, group., .light, group, light """
         try:
             group_name, light_name = name.split('.')
