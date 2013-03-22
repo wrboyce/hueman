@@ -1,7 +1,8 @@
+import sys
+
+
 class GroupController(object):
     """ Dispatches calls to its member Controllers (recursively!). Members can be Lights, Groups, Bridges or GroupControllers. """
-    name, _members = None, None
-
     def __init__(self, name=''):
         self.name = name
         self._members = set()
@@ -35,11 +36,13 @@ class GroupController(object):
 
     @property
     def members(self):
+        """ Return a ``list`` of Group members. """
         return list(self._members)
 
     ## `Controller` interface
     def __getattr__(self, key):
         """ Dispatch calls to members, values are returned as a list of two-tuples: (name, value). """
+        # TODO - this can be dumber
         def wrapper(new_val=None, commit=False):
             #print '{}.{}({})'.format(self, key, new_val)
             vals = map(lambda m: (m.name, getattr(m, key)() if new_val is None else getattr(m, key)(new_val)), self._members)
@@ -51,6 +54,7 @@ class GroupController(object):
         return wrapper
 
     def find(self, *names):
+        """ Find members by name """
         group = GroupController(name='{}'.format(' ,'.join(names)))
         for member in self._members:
             group.add_members(member.find(*names))
@@ -59,24 +63,14 @@ class GroupController(object):
         return group
     group = light = find
 
-    def commit_attributes(self, id, force=False):
-        """ Create the `Group` (if possible!) and return it """
-        def iflatten(lol):
-            return lol.magic
-        lights = iflatten(member.lights() for member in self)
-        if len(set(l._bridge for l in lights)) > 1:
-            raise ValueError("Cannot commit cross-Bridge Groups.")
-        data = {'name': self.name, 'lights': [l.id for l in lights]}
-        self._bridge._put('{}/{}'.format(self._endpoint, id), data)
-        return self
-
 
 class Hueman(GroupController):
     """ Top level `GroupController` for managing all your Bridges and Configurations """
     def __init__(self, cfg):
         def import_classpath(cp):
             mod, cls = cp.rsplit('.', 1)
-            mod = __import__(mod)
+            __import__(mod)
+            mod = sys.modules[mod]
             return getattr(mod, cls)
         super(Hueman, self).__init__()
         self.plugins = {}

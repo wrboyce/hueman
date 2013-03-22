@@ -1,4 +1,4 @@
-from itertools import ifilter
+from itertools import chain, ifilter
 import json
 import re
 
@@ -50,8 +50,6 @@ class Controller(object):
         'colourmode': 'colormode',
         'mode': 'colormode',
     }
-    id, name = None, None
-    _bridge, _cstate, _nstate = None, None, None
 
     def __str__(self):
         return '<{}(id={}, name="{}")>'.format(self.__class__.__name__, self.id, self.name)
@@ -79,27 +77,32 @@ class Controller(object):
         self._cstate = self._bridge._get('{}/{}/{}'.format(self._endpoint, self.id, self._state_endpoint))['state']
 
     def commit(self):
+        """ Send any outstanding changes to the Endpoint. """
         self._bridge._put('{}/{}/{}'.format(self._endpoint, self.id, self._state_endpoint), self._nstate)
         self._cstate = self._nstate.copy()
         self._nstate = {}
         return self
 
     def reset(self):
+        """ Drop any uncommitted changes. """
         self._nstate = self._cstate.copy()
         return self
 
     @property
     def state(self):
+        """ Return the current state """
+        ## TODO only return relevant parts
         return self._cstate.copy()
 
     ## State/value juggling magic
     ## usage: controller.brightness() -> current_brightness
     ##        controller.brightness(100)
     def __getattr__(self, key):
+        """ Complex Logic be here... TODO: Document Me! """
         ## First we check for a plugin
         if key in self._bridge._plugins:
-            def pluginwrapper(self, commit=False, **kwargs):
-                self._apply_plugin(key, commit, **kwargs)
+            def pluginwrapper(*args, **kwargs):
+                self._apply_plugin(key, *args, **kwargs)
                 return self
             return pluginwrapper
         try:
@@ -171,48 +174,6 @@ class Controller(object):
         time += int(val)
         return (time * 10)
 
-    ## Utilities
-    def colour(self, val, commit=False):
-        """ Lookup a colour RGB, convert to XYZ and update the state. """
-        r = requests.get('http://www.colourlovers.com/api/colors?keywords={}&numResults=1&format=json'.format(val)).json()
-        return self.rgb(r[0]['hex'], commit)
-
-    def rgb(self, val, commit=False):
-        def rgb2xyz(rgb):
-            """
-                0.4887180  0.3106803  0.2006017
-                0.1762044  0.8129847  0.0108109
-                0.0000000  0.0102048  0.9897952
-            """
-            for k, v in rgb.iteritems():
-                rgb[k] = v / 255
-            x = rgb['r'] * 0.4887180 + rgb['g'] * 0.3106803 + rgb['b'] * 0.2006017
-            y = rgb['r'] * 0.1762044 + rgb['g'] * 0.8129847 + rgb['b'] * 0.0108109
-            z = rgb['r'] * 0.0000000 + rgb['g'] * 0.0102048 + rgb['b'] * 0.9897952
-            return [x, y, z]
-        rgb = None
-        if isinstance(val, basestring):
-            if val.startswith('#'):
-                val = val[:1]
-            rgb = {
-                'r': int(val[0:2], 16),
-                'g': int(val[2:4], 16),
-                'b': int(val[4:6], 16),
-            }
-        elif isinstance(val, tuple):
-            rgb = {
-                'r': val[0],
-                'g': val[1],
-                'b': val[2],
-            }
-        elif isinstance(val, dict) and 'r' in val and 'g' in val and 'b' in val:
-            rgb = val
-        if rgb is None:
-            raise ValueError("Cannot parse RGB value '{}'".format(val))
-        val = rgb2xyz(rgb)
-        self.xyz(val, commit)
-        return self
-
     def preset(self, name, commit=False):
         """ Load a preset state """
         def _transition(presets):  # Transitions have to be applied immediately [TODO] state-stack for transitions
@@ -233,10 +194,9 @@ class Controller(object):
             self.commit()
         return self
 
-    def _apply_plugin(self, plugin_name, commit, **kwargs):
-        """ Placeholder code to remind me what I was thinking... plugins: name: 'path.to.Plugin'. """
-        self._bridge._plugins[plugin_name](self, **kwargs)
-        if commit:
+    def _apply_plugin(self, plugin_name, *args, **kwargs):
+        self._bridge._plugins[plugin_name](self, *args, **kwargs)
+        if kwargs.get('commit', False):
             self.commit()
         return self
 
@@ -247,6 +207,8 @@ class Controller(object):
             Commands can look like:
                 * on
                 * off
+                * plugin name
+                * plugin:arg
                 * preset name
                 * arg:val arg2:val2
                 * preset name arg:val arg2:val2
@@ -272,7 +234,7 @@ class Controller(object):
         if kvs:
             for k, v in kvs:
                 if k not in self._attributes:
-                    for k2 in self._attributes.keys():
+                    for k2 in chain(self._bridge._plugins.keys(), self._attributes.keys()):
                         if k2.startswith(k):
                             k = k2
                             break
@@ -283,8 +245,7 @@ class Controller(object):
 
 
 class Group(Controller):
-    _lights = None
-
+    """ Mostly useless currently, until we can create new Groups using the Hue API. """
     _endpoint = 'groups'
     _state_endpoint = 'action'
 
@@ -312,6 +273,7 @@ class Group(Controller):
 
 
 class Light(Controller):
+    """ A light, a bulb... The fundamental endpoint. """
     _endpoint = 'lights'
     _state_endpoint = 'state'
 
