@@ -344,15 +344,15 @@ class Bridge(Group):
         tmpl = '<Bridge(hostname="{}", groups=[{}], lights=[{}]>'
         return tmpl.format(self._hostname, ', '.join([str(g) for g in self._groups]), ', '.join([str(l) for l in self._lights]))
 
-    def __init__(self, hostname, username, groups=None, plugins=None, presets=None):
+    def __init__(self, hostname, username, groups={}, plugins={}, presets={}, scenes={}):
         self._bridge = self
         self.id = 0  # Group with id=0 is reserved for all lights in system (conveniently)
         self._hostname = self.name = hostname
         self._username = username
         self._get_lights()
         self._build_groups(groups)
-        self._plugins = plugins if plugins is not None else {}
-        self._presets = presets if presets is not None else {}
+        self._plugins = plugins
+        self._presets = presets
         self._load_global_presets()
 
         self._cstate = {}

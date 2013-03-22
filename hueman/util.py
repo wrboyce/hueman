@@ -1,4 +1,5 @@
 import argparse
+import inspect
 from operator import attrgetter
 import os
 import re
@@ -11,27 +12,62 @@ from hueman.groups import GroupController, Hueman
 def cli(args=None):
     """ Commandline Entrypoint """
     ## Build arguments from configfile & commandline
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', action='store', dest='cfg_file', default='~/.hueman.yml')
-    parser.add_argument('-L', '--list', action='store_true')
-    parser.add_argument('-v', '--verbose', action='store_true')
-    parser.add_argument('-a', '--all', action='store_true', help='Apply command to all lights')
-    parser.add_argument('-f', '--find', action='store', help='Find a group/light - supports wildcards and /regex/')
-    parser.add_argument('-g', '--group', action='store', dest='group', help='Apply command to a specific group')
-    parser.add_argument('-l', '--light', action='store', help='Apply command to a specific light')
-    parser.add_argument('command', metavar='COMMAND', nargs='*', help='Scene name/State change')
-    args = parser.parse_args(args)
+    preset = argparse.ArgumentParser()
+    preset.add_argument('-c', '--config', action='store', dest='cfg_file', default='~/.hueman.yml')
+
+    # Inventory
+    preset.add_argument('-L', '--list')
+    preset.add_argument('-p', action='store_true', dest='plugins')
+    preset.add_argument('-P', action='store_true', dest='presets')
+    preset.add_argument('-s', action='store_true', dest='scenes')
+    preset.add_argument('-v', '--verbose', action='store_true')
+
+    # Targets
+    preset.add_argument('-a', '--all', action='store_true', help='Apply command to all lights')
+    preset.add_argument('-f', '--find', action='store', help='Find a group/light - supports wildcards and /regex/')
+    preset.add_argument('-g', '--group', action='store', dest='group', help='Apply command to a specific group')
+    preset.add_argument('-l', '--light', action='store', help='Apply command to a specific light')
+
+    # Command
+    preset.add_argument('command', metavar='COMMAND', nargs='*', help='Scene name/State change')
+    args = preset.parse_args(args)
 
     ## Initialise the Hueman
     hue = loader(args.cfg_file)
 
     if args.list:
-        lights = set(light for bridge, lights in hue.lights() for light in lights)
-        for light in sorted(lights, key=attrgetter('name' if not args.verbose else 'id')):
-            out = '{}'.format(light.name)
-            if args.verbose:
-                out = '[{}] {} (<<{}>>)'.format(light.id, out, light.state)
-            print out
+        if 'a' in args.list:
+            args.all = True
+        if args.all or 'l' in args.list:
+            print "Lights"
+            print "======"
+            lights = set(light for bridge, lights in hue.lights() for light in lights)
+            for light in sorted(lights, key=attrgetter('name' if not args.verbose else 'id')):
+                out = '{}'.format(light.name)
+                if args.verbose:
+                    out = '[{}] {} (<<{}>>)'.format(light.id, out, light.state)
+                print out
+            print
+        if args.all or 'p' in args.list:
+            print "Plugins"
+            print "======="
+            for plugin_name, plugin in hue.plugins.iteritems():
+                plugin_signature = '{}'.format(plugin_name)
+                plugin_argspec = inspect.getargspec(plugin.__call__)[0][2:]
+                if plugin_argspec:
+                    plugin_signature = '{}:{}'.format(plugin_signature, ','.join(plugin_argspec))
+                if args.verbose:
+                    plugin_signature = '{}\n    {}'.format(plugin_signature, plugin.__doc__.strip())
+                print plugin_signature
+            print
+        if args.all or 'P' in args.list:
+            print "Presets"
+            print "======="
+            print yaml.dump(hue.presets)
+        if args.all or 's' in args.list:
+            print "Scenes"
+            print "======"
+            print yaml.dump(hue.scenes)
         exit()
     ## Find the target groups/lights
     if not any([args.all, args.find, args.group, args.light]):

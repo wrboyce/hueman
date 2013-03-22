@@ -79,7 +79,7 @@ class Hueman(GroupController):
             mod = __import__(mod)
             return getattr(mod, cls)
         super(Hueman, self).__init__()
-        plugins = {}
+        self.plugins = {}
         if cfg.get('plugins'):
             for plugin_name, plugin_cfg in cfg.get('plugins').iteritems():
                 plugin_settings = {}
@@ -89,15 +89,13 @@ class Hueman(GroupController):
                     plugin_classpath = plugin_cfg['path']
                     plugin_settings = plugin_cfg.get('settings', {})
                 plugin_class = import_classpath(plugin_classpath)
-                plugins[plugin_name] = plugin_class(**plugin_settings)
-        presets = {}
-        if cfg.get('presets'):
-            for preset_name, preset_state in cfg.get('presets').iteritems():
-                presets[preset_name] = preset_state
+                self.plugins[plugin_name] = plugin_class(**plugin_settings)
+        self.groups = cfg.get('groups') or {}
+        self.presets = cfg.get('presets') or {}
+        self.scenes = cfg.get('scenes') or {}
         from hueman.entities import Bridge
-        groups = cfg.get('groups') or {}
         for bridge_cfg in cfg.get('bridges', []):
-            self.add_member(Bridge(bridge_cfg['hostname'], bridge_cfg['username'], groups, plugins, presets))
+            self.add_member(Bridge(bridge_cfg['hostname'], bridge_cfg['username'], self.groups, self.plugins, self.presets, self.scenes))
 
     def __str__(self):
         return '<{}(members=[{}])>'.format(self.__class__.__name__, ', '.join([str(m) for m in self._members]))
