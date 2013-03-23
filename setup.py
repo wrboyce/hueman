@@ -19,5 +19,9 @@ setup(
     license='BSD',
     install_requires=requires,
     packages=['hueman'],
-    entry_points={'console_scripts': {'hueman = hueman.util:cli'}}
+    package_data={'': ['LICENCE'], 'hueman': ['hueman.yml']},
+    package_dir={'requests': 'requests'},
+    install_package_data=True,
+    entry_points={'console_scripts': {'hueman = hueman.util:cli'}},
+    zip_safe=False
 )
