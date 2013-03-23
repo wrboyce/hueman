@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+from copy import copy
 from itertools import chain, ifilter
 import json
 import re
@@ -114,6 +115,8 @@ class Controller(object):
                 attr_cfg = Light._attributes[attr_cfg]
         except KeyError:
             raise AttributeError("'{0}' object has no attribute '{1}'".format(self.__class__.__name__, key))
+        attr_cfg = attr_cfg.copy()
+        attr_cfg['key'] = key
         ## Get the preprocessor, if one is defined
         preprocessor = attr_cfg.get('preprocessor', None)
         if isinstance(preprocessor, basestring):  # strings map to self._pp_{preprocessor}
@@ -169,11 +172,15 @@ class Controller(object):
     def _pp_time(self, val, _cfg):
         """ Parse a time from "shorthand" format: 10m, 30s, 1m30s. """
         time = 0
-        if 'm' in val:
-            mins, val = val.split('m')
-            time += (int(mins) * 60)
-        val = val.strip('s')
-        time += int(val)
+        try:
+            time = int(val)
+        except ValueError:
+            if 'm' in val:
+                mins, val = val.split('m')
+                time += (int(mins) * 60)
+            val = val.strip('s')
+            if val:
+                time += int(val)
         return (time * 10)
 
     def preset(self, name, commit=False):
@@ -324,7 +331,7 @@ class Bridge(Group):
 
     def _preset(self, name):
         name = name.replace(' ', '_')
-        return self._presets[name].copy()
+        return copy(self._presets[name])
 
     def _get(self, path):
         return requests.get('http://{0}/api/{1}/{2}'.format(self._hostname, self._username, path)).json()

@@ -1,1 +1,2 @@
 nose==1.2.1
+httpretty==0.5.12
