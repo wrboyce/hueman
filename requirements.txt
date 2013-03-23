@@ -1,2 +1,1 @@
-PyYAML==3.10
-requests==1.1.0
+nose==1.2.1
