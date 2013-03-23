@@ -1,6 +1,8 @@
 hueman
 ======
 
+[![Build Status](https://travis-ci.org/wrboyce/hueman.png?branch=master)](https://travis-ci.org/wrboyce/hueman)
+
 A human interface for managing your hues.
 
 
