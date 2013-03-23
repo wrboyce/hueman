@@ -19,7 +19,7 @@ class Controller(object):
             'max': 255
         },
         'hue': {
-            'preprocess': 'int',
+            'preprocessor': 'int',
             'min': 0,
             'max': 65535,
         },
