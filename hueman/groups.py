@@ -1,3 +1,6 @@
+from __future__ import print_function
+
+from itertools import ifilter
 import sys
 
 
@@ -21,8 +24,9 @@ class GroupController(object):
     def __getitem__(self, key):
         """ Allow `groupcontroller[item_name]` style access """
         try:
-            return filter(lambda m: m.name == key, self._members).pop(0)
-        except IndexError:
+            i = ifilter(lambda m: m.name == key, self._members)
+            return i.next()
+        except StopIteration:
             raise KeyError
 
     def add_member(self, obj):
@@ -44,7 +48,7 @@ class GroupController(object):
         """ Dispatch calls to members, values are returned as a list of two-tuples: (name, value). """
         # TODO - this can be dumber
         def wrapper(new_val=None, commit=False):
-            #print '{0}.{1}({2})'.format(self, key, new_val)
+            #print('{0}.{1}({2})'.format(self, key, new_val))
             vals = map(lambda m: (m.name, getattr(m, key)() if new_val is None else getattr(m, key)(new_val)), self._members)
             if new_val is None:
                 return vals

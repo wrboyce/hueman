@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from itertools import chain, ifilter
 import json
 import re
@@ -120,7 +122,7 @@ class Controller(object):
             preprocessor = lambda v, c: v
         ## Return a wrapper for getting/setting the attribute
         def gettersetter(new_val=None, commit=False):  # noqa
-            #print '{0}.{1}({2})'.format(self, key, new_val)
+            #print('{0}.{1}({2})'.format(self, key, new_val))
             if new_val is None:
                 return self._cstate[key]
             elif attr_cfg.get('readonly', False):
@@ -312,7 +314,7 @@ class Bridge(Group):
 
     def _load_global_presets(self):
         try:
-            cfg_file = file('hueman.yml').read()
+            cfg_file = open('hueman.yml').read()
             cfg_dict = yaml.load(cfg_file)
             self._presets = cfg_dict.get('presets', {}).update(self._presets)
         except IOError:

@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import argparse
 import inspect
 from operator import attrgetter
@@ -39,18 +41,18 @@ def cli(args=None):
         if 'a' in args.list:
             args.all = True
         if args.all or 'l' in args.list:
-            print "Lights"
-            print "======"
+            print("Lights")
+            print("======")
             lights = set(light for bridge, lights in hue.lights() for light in lights)
             for light in sorted(lights, key=attrgetter('name' if not args.verbose else 'id')):
                 out = '{0}'.format(light.name)
                 if args.verbose:
                     out = '[{0}] {1} (<<{2}>>)'.format(light.id, out, light.state)
-                print out
-            print
+                print(out)
+            print()
         if args.all or 'p' in args.list:
-            print "Plugins"
-            print "======="
+            print("Plugins")
+            print("=======")
             for plugin_name, plugin in hue.plugins.iteritems():
                 plugin_signature = '{0}'.format(plugin_name)
                 plugin_argspec = inspect.getargspec(plugin.__call__)[0][2:]
@@ -58,16 +60,16 @@ def cli(args=None):
                     plugin_signature = '{0}:{1}'.format(plugin_signature, ','.join(plugin_argspec))
                 if args.verbose:
                     plugin_signature = '{0}\n    {1}'.format(plugin_signature, plugin.__doc__.strip())
-                print plugin_signature
-            print
+                print(plugin_signature)
+            print()
         if args.all or 'P' in args.list:
-            print "Presets"
-            print "======="
-            print yaml.dump(hue.presets)
+            print("Presets")
+            print("=======")
+            print(yaml.dump(hue.presets))
         if args.all or 's' in args.list:
-            print "Scenes"
-            print "======"
-            print yaml.dump(hue.scenes)
+            print("Scenes")
+            print("======")
+            print(yaml.dump(hue.scenes))
         exit()
     ## Find the target groups/lights
     if not any([args.all, args.find, args.group, args.light]):
@@ -99,5 +101,5 @@ def cli(args=None):
 
 def loader(cfg_file='~/.hueman.yml'):
     """ Shortcut function to furnish you with a configured `Hueman`. """
-    cfg = yaml.load(file(os.path.expanduser(cfg_file)).read())
+    cfg = yaml.load(open(os.path.expanduser(cfg_file)).read())
     return Hueman(cfg)
