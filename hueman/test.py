@@ -94,14 +94,26 @@ def test_build_lights():
             }
         }
     }
+
+    def _last_request_body():
+        body = HTTPretty.last_request.body
+        if hasattr(body, 'decode'):
+            encoding = 'utf-8'
+            try:
+                encoding = HTTPretty.last_request.headers.get_content_charset()
+            except AttributeError:
+                pass
+            body = body.decode(encoding or 'utf-8')
+        return json.loads(body)
+
     hueman = Hueman(cfg)
     assert len(hueman['limelight.example.com'].light(None)) == 3
     assert hueman['limelight.example.com'].light('light-1') == hueman.find('light-1').members[0]
     hueman.on(False, commit=True)
-    assert json.loads(HTTPretty.last_request.body) == {'on': False}
+    assert _last_request_body() == {'on': False}
     hueman.bri(255).commit()
     assert len(hueman.bri()) == len(filter(lambda a: a[1] == 255, hueman.brightness()))
-    assert json.loads(HTTPretty.last_request.body) == {'bri': 255}
+    assert _last_request_body() == {'bri': 255}
 
     assert hueman['limelight.example.com'].light('light-4') is None
 
@@ -136,17 +148,17 @@ def test_build_lights():
     assert len(hueman.find(re.compile('light-[1-3]', re.I))) == 3
 
     l1._apply_command('_skip:True', commit=True)
-    assert json.loads(HTTPretty.last_request.body) == {}
+    assert _last_request_body() == {}
     l1._apply_command('br:100', commit=True)
-    assert json.loads(HTTPretty.last_request.body) == {'bri': 100}
+    assert _last_request_body() == {'bri': 100}
     l1._apply_command('bright', commit=True)
-    assert json.loads(HTTPretty.last_request.body) == {'bri': 255}
+    assert _last_request_body() == {'bri': 255}
     l1._apply_command('on', commit=True)
-    assert json.loads(HTTPretty.last_request.body) == {'on': True}
+    assert _last_request_body() == {'on': True}
     l1._apply_command('off', commit=True)
-    assert json.loads(HTTPretty.last_request.body) == {'on': False}
+    assert _last_request_body() == {'on': False}
     l1._apply_command('slow bright')
-    assert json.loads(HTTPretty.last_request.body) == {'transitiontime': 900, 'bri': 255}
+    assert _last_request_body() == {'transitiontime': 900, 'bri': 255}
 
     l2 = hueman['limelight.example.com'].light('light-2')
     hueman.scene('s1+2', True)
