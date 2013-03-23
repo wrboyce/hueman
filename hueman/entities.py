@@ -57,15 +57,6 @@ class Controller(object):
     def __str__(self):
         return '<{0}(id={1}, name="{2}")>'.format(self.__class__.__name__, self.id, self.name)
 
-    ## Given a configured "Bridge", lookup all entities
-    @classmethod
-    def get_all(cls, bridge):
-        objects = GroupController()
-        data = bridge._get('{0}/get'.format(cls._endpoint))
-        for id, dict in data.iteritems():
-            objects.add_member(cls(bridge, id=id, name=dict['name'].replace('.', '-')))
-        return objects
-
     def __init__(self, bridge, id, name, cstate=None, nstate=None):
         self._bridge = bridge
         self.id = id
@@ -260,22 +251,16 @@ class Group(Controller):
     _endpoint = 'groups'
     _state_endpoint = 'action'
 
-    @classmethod
-    def get_all(cls, bridge, lights):
-        groups = super(Group, cls).get_all(bridge)
-        for g in groups:
-            lights = filter(lambda l: l.id in g._member_ids, lights)
-            g._lights = dict((l.name, l) for l in lights)
-        return groups
-
     def light(self, name):
+        """ Lookup a light by name, if name is None return all lights. """
         if name is None:
-            return self._lights.members
+            group = GroupController(name='{0}.light:{1}'.format(self.name, name))
+            group.add_members(self._lights)
+            return group
         try:
             return self._lights[name]
         except KeyError:
             return None
-    __getitem__ = light
 
     def lights(self, *names):
         if not names:
@@ -347,39 +332,6 @@ class Bridge(Group):
             return self._groups[name]
         except KeyError:
             return None
-
-    def light(self, name):
-        """ Lookup a light by name, if name is None return all lights. """
-        if name is None:
-            group = GroupController(name='{0}.light'.format(self.name))
-            group.add_members(self._lights)
-            return group
-        try:
-            return self._lights[name]
-        except KeyError:
-            return None
-
-    def _find(self, name):  # DEAD CODE
-        """ name: group.light, group., .light, group, light """
-        try:
-            group_name, light_name = name.split('.')
-            if not group_name:
-                group_name = None
-            if not light_name:
-                light_name = None
-        except ValueError:
-            group_name = name
-            light_name = None
-        # room.lamp -> group=room light=lamp
-        # room. -> group=room light=None
-        # .lamp -> group=None light=lamp
-        # room -> group=room light=None
-        # lamp -> group=lamp light=None -- handle this case now
-        if light_name is None and self.group(group_name) is None:
-            return self.light(group_name)
-        if group_name is None:
-            return self.light(light_name)
-        return self.group(group_name).light(light_name)
 
     def find(self, *names):
         group = GroupController()
