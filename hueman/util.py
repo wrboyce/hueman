@@ -82,11 +82,11 @@ def cli(args=None):
     if args.find:
         targets = []
         for t in args.find.split(','):
-            if t[0] == '/' and t[-1] == '/':
-                t = re.compile(t.strip('/'), re.I)
-            elif '*' in t or '?' in t or '#' in t:  # wildcards
+            if not (t.startswith('/') and t.endswith('/')) and ('*' in t or '?' in t or '#' in t):  # wildcards
                 t = t.replace('*', '.*').replace('?', '.').replace('#', '[0-9]')
                 t = '/{0}/'.format(t)
+            if t[0] == '/' and t[-1] == '/':
+                t = re.compile(t.strip('/'), re.I)
             targets.append(t)
         target.add_members(hue.find(*targets))
     if args.group:

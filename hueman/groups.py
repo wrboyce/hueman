@@ -59,11 +59,9 @@ class GroupController(object):
 
     def find(self, *names):
         """ Find members by name """
-        group = GroupController(name='{0}'.format(' ,'.join(names)))
+        group = GroupController(name='{0}'.format(' ,'.join(str(n) if not hasattr(n, 'pattern') else '/{0}/'.format(n.pattern) for n in names)))
         for member in self._members:
             group.add_members(member.find(*names))
-        if len(group) == 1:
-            return group.members[0]
         return group
     group = light = find
 
