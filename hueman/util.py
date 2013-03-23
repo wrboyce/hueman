@@ -43,21 +43,21 @@ def cli(args=None):
             print "======"
             lights = set(light for bridge, lights in hue.lights() for light in lights)
             for light in sorted(lights, key=attrgetter('name' if not args.verbose else 'id')):
-                out = '{}'.format(light.name)
+                out = '{0}'.format(light.name)
                 if args.verbose:
-                    out = '[{}] {} (<<{}>>)'.format(light.id, out, light.state)
+                    out = '[{0}] {1} (<<{2}>>)'.format(light.id, out, light.state)
                 print out
             print
         if args.all or 'p' in args.list:
             print "Plugins"
             print "======="
             for plugin_name, plugin in hue.plugins.iteritems():
-                plugin_signature = '{}'.format(plugin_name)
+                plugin_signature = '{0}'.format(plugin_name)
                 plugin_argspec = inspect.getargspec(plugin.__call__)[0][2:]
                 if plugin_argspec:
-                    plugin_signature = '{}:{}'.format(plugin_signature, ','.join(plugin_argspec))
+                    plugin_signature = '{0}:{1}'.format(plugin_signature, ','.join(plugin_argspec))
                 if args.verbose:
-                    plugin_signature = '{}\n    {}'.format(plugin_signature, plugin.__doc__.strip())
+                    plugin_signature = '{0}\n    {1}'.format(plugin_signature, plugin.__doc__.strip())
                 print plugin_signature
             print
         if args.all or 'P' in args.list:
@@ -84,7 +84,7 @@ def cli(args=None):
                 t = re.compile(t.strip('/'), re.I)
             elif '*' in t or '?' in t or '#' in t:  # wildcards
                 t = t.replace('*', '.*').replace('?', '.').replace('#', '[0-9]')
-                t = '/{}/'.format(t)
+                t = '/{0}/'.format(t)
             targets.append(t)
         target.add_members(hue.find(*targets))
     if args.group:

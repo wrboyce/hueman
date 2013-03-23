@@ -4,7 +4,7 @@ import requests
 class Colour(object):
     """ Lookup a colour RGB, convert to XYZ and update the state. """
     def __call__(self, controller, name):
-        r = requests.get('http://www.colourlovers.com/api/colors?keywords={}&numResults=1&format=json'.format(name)).json()
+        r = requests.get('http://www.colourlovers.com/api/colors?keywords={0}&numResults=1&format=json'.format(name)).json()
         return controller.rgb(r[0]['hex'])
 
 
@@ -40,6 +40,6 @@ class RGB(object):
         elif isinstance(val, dict) and 'r' in val and 'g' in val and 'b' in val:
             rgb = val
         if rgb is None:
-            raise ValueError("Cannot parse RGB value '{}'".format(val))
+            raise ValueError("Cannot parse RGB value '{0}'".format(val))
         val = rgb2xyz(rgb)
         controller.xy(val[:2])

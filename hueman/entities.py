@@ -52,13 +52,13 @@ class Controller(object):
     }
 
     def __str__(self):
-        return '<{}(id={}, name="{}")>'.format(self.__class__.__name__, self.id, self.name)
+        return '<{0}(id={1}, name="{2}")>'.format(self.__class__.__name__, self.id, self.name)
 
     ## Given a configured "Bridge", lookup all entities
     @classmethod
     def get_all(cls, bridge):
         objects = GroupController()
-        data = bridge._get('{}/get'.format(cls._endpoint))
+        data = bridge._get('{0}/get'.format(cls._endpoint))
         for id, dict in data.iteritems():
             objects.add_member(cls(bridge, id=id, name=dict['name'].replace('.', '-')))
         return objects
@@ -74,11 +74,11 @@ class Controller(object):
 
     ## get/put state
     def _get_state(self):
-        self._cstate = self._bridge._get('{}/{}/{}'.format(self._endpoint, self.id, self._state_endpoint))['state']
+        self._cstate = self._bridge._get('{0}/{1}/{2}'.format(self._endpoint, self.id, self._state_endpoint))['state']
 
     def commit(self):
         """ Send any outstanding changes to the Endpoint. """
-        self._bridge._put('{}/{}/{}'.format(self._endpoint, self.id, self._state_endpoint), self._nstate)
+        self._bridge._put('{0}/{1}/{2}'.format(self._endpoint, self.id, self._state_endpoint), self._nstate)
         self._cstate = self._nstate.copy()
         self._nstate = {}
         return self
@@ -111,20 +111,20 @@ class Controller(object):
                 key = attr_cfg
                 attr_cfg = Light._attributes[attr_cfg]
         except KeyError:
-            raise AttributeError("'{}' object has no attribute '{}'".format(self.__class__.__name__, key))
+            raise AttributeError("'{0}' object has no attribute '{1}'".format(self.__class__.__name__, key))
         ## Get the preprocessor, if one is defined
         preprocessor = attr_cfg.get('preprocessor', None)
         if isinstance(preprocessor, basestring):  # strings map to self._pp_{preprocessor}
-            preprocessor = getattr(self, '_pp_{}'.format(preprocessor), None)
+            preprocessor = getattr(self, '_pp_{0}'.format(preprocessor), None)
         elif not callable(preprocessor):  # if not, wrap in a lambda so we can call blindly later
             preprocessor = lambda v, c: v
         ## Return a wrapper for getting/setting the attribute
         def gettersetter(new_val=None, commit=False):  # noqa
-            #print '{}.{}({})'.format(self, key, new_val)
+            #print '{0}.{1}({2})'.format(self, key, new_val)
             if new_val is None:
                 return self._cstate[key]
             elif attr_cfg.get('readonly', False):
-                raise ValueError("Attempted to set readonly value '{}'".format(key))
+                raise ValueError("Attempted to set readonly value '{0}'".format(key))
             self._nstate[key] = preprocessor(new_val, attr_cfg)
             if commit:
                 self.commit()
@@ -254,7 +254,7 @@ class Group(Controller):
         groups = super(Group, cls).get_all(bridge)
         for g in groups:
             lights = filter(lambda l: l.id in g._member_ids, lights)
-            g._lights = {l.name: l for l in lights}
+            g._lights = dict((l.name, l) for l in lights)
         return groups
 
     def light(self, name):
@@ -280,7 +280,7 @@ class Light(Controller):
 
 class Bridge(Group):
     def __str__(self):
-        tmpl = '<Bridge(hostname="{}", groups=[{}], lights=[{}]>'
+        tmpl = '<Bridge(hostname="{0}", groups=[{1}], lights=[{2}]>'
         return tmpl.format(self._hostname, ', '.join([str(g) for g in self._groups]), ', '.join([str(l) for l in self._lights]))
 
     def __init__(self, hostname, username, groups={}, plugins={}, presets={}, scenes={}):
@@ -299,12 +299,12 @@ class Bridge(Group):
 
     def _get_lights(self):
         d = self._get('')
-        self._lights = GroupController(name='[{}].lights'.format(self.name))
+        self._lights = GroupController(name='[{0}].lights'.format(self.name))
         for l_id, l_data in d.get('lights', {}).iteritems():
             self._lights.add_member(Light(self, l_id, l_data['name'].replace(' ', '-'), l_data.get('state', None)))
 
     def _build_groups(self, g_cfg):
-        self._groups = GroupController(name='[{}].groups'.format(self.name))
+        self._groups = GroupController(name='[{0}].groups'.format(self.name))
         for g_name, g_lights in g_cfg.iteritems():
             g = GroupController(g_name)
             g.add_members(self.find(*g_lights))
@@ -323,10 +323,10 @@ class Bridge(Group):
         return self._presets[name].copy()
 
     def _get(self, path):
-        return requests.get('http://{}/api/{}/{}'.format(self._hostname, self._username, path)).json()
+        return requests.get('http://{0}/api/{1}/{2}'.format(self._hostname, self._username, path)).json()
 
     def _put(self, path, data):
-        return requests.put('http://{}/api/{}/{}'.format(self._hostname, self._username, path), json.dumps(data)).json()
+        return requests.put('http://{0}/api/{1}/{2}'.format(self._hostname, self._username, path), json.dumps(data)).json()
 
     def group(self, name):
         """ Lookup a group by name, if name is None return all groups. """
@@ -340,7 +340,7 @@ class Bridge(Group):
     def light(self, name):
         """ Lookup a light by name, if name is None return all lights. """
         if name is None:
-            group = GroupController(name='{}.light'.format(self.name))
+            group = GroupController(name='{0}.light'.format(self.name))
             group.add_members(self._lights)
             return group
         try:

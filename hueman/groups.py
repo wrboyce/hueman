@@ -8,7 +8,7 @@ class GroupController(object):
         self._members = set()
 
     def __str__(self):
-        return '<{}(name="{}", members=[{}])>'.format(self.__class__.__name__, self.name, ', '.join([str(m) for m in self._members]))
+        return '<{0}(name="{1}", members=[{2}])>'.format(self.__class__.__name__, self.name, ', '.join([str(m) for m in self._members]))
 
     def __len__(self):
         return len(self._members)
@@ -44,7 +44,7 @@ class GroupController(object):
         """ Dispatch calls to members, values are returned as a list of two-tuples: (name, value). """
         # TODO - this can be dumber
         def wrapper(new_val=None, commit=False):
-            #print '{}.{}({})'.format(self, key, new_val)
+            #print '{0}.{1}({2})'.format(self, key, new_val)
             vals = map(lambda m: (m.name, getattr(m, key)() if new_val is None else getattr(m, key)(new_val)), self._members)
             if new_val is None:
                 return vals
@@ -55,7 +55,7 @@ class GroupController(object):
 
     def find(self, *names):
         """ Find members by name """
-        group = GroupController(name='{}'.format(' ,'.join(names)))
+        group = GroupController(name='{0}'.format(' ,'.join(names)))
         for member in self._members:
             group.add_members(member.find(*names))
         if len(group) == 1:
@@ -92,4 +92,4 @@ class Hueman(GroupController):
             self.add_member(Bridge(bridge_cfg['hostname'], bridge_cfg['username'], self.groups, self.plugins, self.presets, self.scenes))
 
     def __str__(self):
-        return '<{}(members=[{}])>'.format(self.__class__.__name__, ', '.join([str(m) for m in self._members]))
+        return '<{0}(members=[{1}])>'.format(self.__class__.__name__, ', '.join([str(m) for m in self._members]))
