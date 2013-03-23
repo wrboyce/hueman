@@ -97,7 +97,8 @@ class Hueman(GroupController):
         return '<{0}(members=[{1}])>'.format(self.__class__.__name__, ', '.join([str(m) for m in self._members]))
 
     def scene(self, scene, commit=False):
-        scene = self.scenes[scene]
+        if isinstance(scene, basestring):
+            scene = self.scenes[scene]
         for target, settings in scene.iteritems():
             if isinstance(settings, basestring):
                 self.find(target)._apply_command(settings)
