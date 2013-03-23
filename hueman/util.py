@@ -73,9 +73,8 @@ def cli(args=None):
         exit()
     ## Find the target groups/lights
     if not any([args.all, args.find, args.group, args.light]):
-        return  # must specify a target! TODO scene
         try:
-            return hue.scene('_'.join(args.command))
+            return hue.scene('_'.join(args.command), commit=True)
         except KeyError:
             exit('Must specify a target or valid scene')
     target = hue if args.all else GroupController(name='cli')

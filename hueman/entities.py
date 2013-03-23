@@ -218,6 +218,8 @@ class Controller(object):
                 * arg:val preset name arg2:val2
         """
         preset, kvs = [], []
+        if isinstance(command, basestring):
+            command = command.split(' ')
         for s in command:
             if s.startswith('_'):
                 continue

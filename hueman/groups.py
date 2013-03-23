@@ -95,3 +95,15 @@ class Hueman(GroupController):
 
     def __str__(self):
         return '<{0}(members=[{1}])>'.format(self.__class__.__name__, ', '.join([str(m) for m in self._members]))
+
+    def scene(self, scene, commit=False):
+        scene = self.scenes[scene]
+        for target, settings in scene.iteritems():
+            if isinstance(settings, basestring):
+                self.find(target)._apply_command(settings)
+            elif isinstance(settings, dict):
+                self.find(target)._apply(settings)
+        if commit:
+            target = self.find(*scene.keys())
+            target.commit()
+        return self
