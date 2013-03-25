@@ -79,7 +79,7 @@ class Controller(object):
 
     def reset(self):
         """ Drop any uncommitted changes. """
-        self._nstate = self._cstate.copy()
+        self._nstate = {}
         return self
 
     @property
@@ -164,23 +164,25 @@ class Controller(object):
         """ Parse a time from "shorthand" format: 10m, 30s, 1m30s. """
         time = 0
         try:
-            time = int(val)
+            time = float(val)
         except ValueError:
             if 'm' in val:
                 mins, val = val.split('m')
-                time += (int(mins) * 60)
+                time += (float(mins) * 60)
             val = val.strip('s')
             if val:
-                time += int(val)
+                time += float(val)
         return (time * 10)
 
     def preset(self, name, commit=False):
         """ Load a preset state """
         def _transition(presets):  # Transitions have to be applied immediately [TODO] state-stack for transitions
             for data in presets:
+                commit = False
                 if data is not presets[-1]:
                     data['time'] = 0
-                self._apply(data, True)
+                    commit = True
+                self._apply(data, commit)
             return self
         preset_data = self._bridge._preset(name)
         if isinstance(preset_data, list):

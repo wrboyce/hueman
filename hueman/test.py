@@ -1,170 +1,119 @@
-import json
-import re
+import unittest
 
-from httpretty import HTTPretty, httprettified
+import mock
 
-from hueman.groups import Hueman
-
-
-@httprettified
-def test_build_lights():
-    response = """{
-        "lights": {
-            "1": {
-                "state": {
-                    "on": false,
-                    "bri": 159,
-                    "hue": 13122,
-                    "sat": 211,
-                    "xy": [
-                        0.5119,
-                        0.4147
-                    ],
-                    "ct": 467,
-                    "alert": "none",
-                    "effect": "none",
-                    "colormode": "ct",
-                    "reachable": true
-                },
-                "name": "light-1"
-            },
-            "2": {
-                "state": {
-                    "on": true,
-                    "bri": 254,
-                    "hue": 33863,
-                    "sat": 49,
-                    "xy": [
-                        0.368,
-                        0.3686
-                    ],
-                    "ct": 231,
-                    "alert": "none",
-                    "effect": "none",
-                    "colormode": "ct",
-                    "reachable": true
-                },
-                "name": "light-2"
-            },
-            "3": {
-                "state": {
-                    "on": true,
-                    "bri": 254,
-                    "hue": 33863,
-                    "sat": 49,
-                    "xy": [
-                        0.368,
-                        0.3686
-                    ],
-                    "ct": 231,
-                    "alert": "none",
-                    "effect": "none",
-                    "colormode": "ct",
-                    "reachable": true
-                },
-                "name": "light-3"
-            }
-        }
-    }"""
-    put_response = "[]"
-    HTTPretty.register_uri(HTTPretty.GET, 'http://limelight.example.com/api/test/', body=response, content_type='application/json')
-    HTTPretty.register_uri(HTTPretty.PUT, 'http://limelight.example.com/api/test/groups/0/action', body=put_response, content_type='application/json')
-    HTTPretty.register_uri(HTTPretty.PUT, 'http://limelight.example.com/api/test/lights/1/state', body=put_response, content_type='application/json')
-    HTTPretty.register_uri(HTTPretty.PUT, 'http://limelight.example.com/api/test/lights/2/state', body=put_response, content_type='application/json')
-    cfg = {
-        'bridges': [{'hostname': 'limelight.example.com', 'username': 'test'}],
-        'groups': {
-            'g1': ['light-1'],
-            'g2+3': ['light-2', 'light-3']
-        },
-        'presets': {
-            'bright': {
-                'brightness': '100%'
-            },
-            'slow_bright': [{'bri': '50%'}, {'bri': '100%', 'time': '1m30s'}]
-        },
-        'scenes': {
-            's1+2': {
-                'light-1': 'bright',
-                'light-2': {
-                    'bri': 255,
-                    'sat': 255,
-                    'hue': 0
-                }
-            }
-        }
-    }
-
-    def _last_request_body():
-        body = HTTPretty.last_request.body
-        if hasattr(body, 'decode'):
-            encoding = 'utf-8'
-            try:
-                encoding = HTTPretty.last_request.headers.get_content_charset()
-            except AttributeError:
-                pass
-            body = body.decode(encoding or 'utf-8')
-        return json.loads(body)
-
-    hueman = Hueman(cfg)
-    assert len(hueman['limelight.example.com'].light(None)) == 3
-    assert hueman['limelight.example.com'].light('light-1') == hueman.find('light-1').members[0]
-    hueman.on(False, commit=True)
-    assert _last_request_body() == {'on': False}
-    hueman.bri(255).commit()
-    assert len(hueman.bri()) == len(filter(lambda a: a[1] == 255, hueman.brightness()))
-    assert _last_request_body() == {'bri': 255}
-
-    assert hueman['limelight.example.com'].light('light-4') is None
-
-    try:
-        hueman.reachable(False)
-        assert True is False
-    except ValueError, e:
-        assert e.args[0] == "Attempted to set readonly value 'reachable'"
-
-    try:
-        hueman['limelight.example.com'].moose(100)
-        assert True is False
-    except AttributeError, e:
-        assert e.args[0] == "'Bridge' object has no attribute 'moose'"
-
-    l1 = hueman['limelight.example.com'].light('light-1')
-    l1.brightness(200).commit()
-    assert l1.brightness() == 200
-    l1.brightness('100%').commit()
-    assert l1.brightness() == 255
-    l1.brightness(-10).commit()
-    assert l1.brightness() == 0
-    l1.brightness(200, commit=True).brightness('~50%').commit()
-    assert l1.brightness() == 100
-    l1.brightness('+50%').commit()
-    assert l1.brightness() == 150
-    l1.brightness('-50%').commit()
-    assert l1.brightness() == 75
-    l1.brightness(500).commit()
-    assert l1.brightness() == 255
-
-    assert len(hueman.find(re.compile('light-[1-3]', re.I))) == 3
-
-    l1._apply_command('_skip:True', commit=True)
-    assert _last_request_body() == {}
-    l1._apply_command('br:100', commit=True)
-    assert _last_request_body() == {'bri': 100}
-    l1._apply_command('bright', commit=True)
-    assert _last_request_body() == {'bri': 255}
-    l1._apply_command('on', commit=True)
-    assert _last_request_body() == {'on': True}
-    l1._apply_command('off', commit=True)
-    assert _last_request_body() == {'on': False}
-    l1._apply_command('slow bright')
-    assert _last_request_body() == {'transitiontime': 900, 'bri': 255}
-
-    l2 = hueman['limelight.example.com'].light('light-2')
-    hueman.scene('s1+2', True)
-    assert l1.bri() == 255
-    assert l2.sat() == 255
+from hueman.entities import Light
 
 
-if __name__ == '__main__':
-    test_build_lights()
+class TestLight(unittest.TestCase):
+    def setUp(self):
+        self.light = Light(mock.MagicMock(), '1', 'light-1', {})
+
+    def test_commit(self):
+        self.light._cstate = {'on': False}
+        self.light._nstate = {'on': True}
+        self.light.commit()
+        self.light._bridge._put.assert_called_once_with('lights/1/state', {'on': True})
+        self.assertEqual(self.light._cstate, {'on': True})
+        self.assertEqual(self.light._nstate, {})
+
+    def test_reset(self):
+        self.light._cstate = {'on': False}
+        self.light._nstate = {'on': True}
+        self.light.reset()
+        self.assertEqual(self.light._cstate, {'on': False})
+        self.assertEqual(self.light._nstate, {})
+
+    def test_state(self):
+        self.assertIsNot(self.light.state, self.light._cstate)
+        self.assertEqual(self.light.state, self.light._cstate)
+
+    def test_set_attribute(self):
+        self.light.bri(100)
+        self.assertEqual(self.light._nstate['bri'], 100)
+
+    def test_set_attribute_commit(self):
+        self.light.bri(100, commit=True)
+        self.assertEqual(self.light._cstate['bri'], 100)
+
+    def test_get_attribute(self):
+        self.light._cstate = {'bri': 100}
+        self.assertEqual(self.light.bri(), 100)
+
+    def test_set_int_attribute_min(self):
+        self.light.bri(-10)
+        self.assertEqual(self.light._nstate['bri'], 0)
+
+    def test_set_int_attribute_max(self):
+        self.light.bri(500)
+        self.assertEqual(self.light._nstate['bri'], 255)
+
+    def test_set_int_attribute_abs_percentage(self):
+        self.light.bri('50%')
+        self.assertEqual(self.light._nstate['bri'], 127)
+
+    def test_set_int_attribute_rel_percentage(self):
+        self.light._cstate = {'bri': 200}
+        self.light.bri('~50%')
+        self.assertEqual(self.light._nstate['bri'], 100)
+
+    def test_set_int_attribute_add_percentage(self):
+        self.light._cstate = {'bri': 200}
+        self.light.bri('+25%')
+        self.assertEqual(self.light._nstate['bri'], 250)
+
+    def test_set_int_attribute_sub_percentage(self):
+        self.light._cstate = {'bri': 200}
+        self.light.bri('-25%')
+        self.assertEqual(self.light._nstate['bri'], 150)
+
+    def test_set_int_attribute_invalid(self):
+        self.assertRaises(ValueError, self.light.bri, 'abc')
+
+    def test_set_readonly_attribute(self):
+        self.assertRaises(ValueError, self.light.reachable, False)
+
+    def test_set_time_attribute_float(self):
+        self.light.transitiontime(0.1)
+        self.assertEqual(self.light._nstate['transitiontime'], 1)
+
+    def test_set_time_attribute_str(self):
+        self.light.transitiontime('0.1')
+        self.assertEqual(self.light._nstate['transitiontime'], 1)
+
+    def test_set_time_attribute_str_secs(self):
+        self.light.transitiontime('1s')
+        self.assertEqual(self.light._nstate['transitiontime'], 10)
+
+    def test_set_time_attribute_str_mins(self):
+        self.light.transitiontime('1m')
+        self.assertEqual(self.light._nstate['transitiontime'], 600)
+
+    def test_set_time_attribute_str_mins_secs(self):
+        self.light.transitiontime('1m30s')
+        self.assertEqual(self.light._nstate['transitiontime'], 900)
+
+    def test_set_time_attribute_str_mins_secs_decimal(self):
+        self.light.transitiontime('1.5m')
+        self.assertEqual(self.light._nstate['transitiontime'], 900)
+
+    def test_set_time_attribute_invalid(self):
+        self.assertRaises(ValueError, self.light.transitiontime, 'abc')
+
+    def test_set_alias_attribute(self):
+        self.light.brightness(100)
+        self.assertEqual(self.light._nstate['bri'], 100)
+
+    def test_preset(self):
+        self.light._bridge._preset.return_value = {'bri': 255}
+        self.light.preset('bright')
+        self.light._bridge._preset.assert_called_once_with('bright')
+        self.assertEqual(self.light._nstate['bri'], 255)
+
+    def test_preset_transition(self):
+        self.light._bridge._preset.return_value = [{'bri': 0}, {'bri': 255, 'transitiontime': 10}]
+        self.light.preset('slow_bright')
+        self.light._bridge._preset.assert_called_once_with('slow_bright')
+        self.light._bridge._put.assert_called_once_with('lights/1/state', {'transitiontime': 0.0, 'bri': 0})
+        self.assertEqual(self.light._nstate['bri'], 255)
+        self.assertEqual(self.light._nstate['transitiontime'], 100)
