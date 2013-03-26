@@ -327,3 +327,4 @@ TODO
 * api: reading state from GroupControllers
 * api: `parse_colour` -- check for colours in `_nstate`
 * Move ("rgb" and "colour") into `Plugins` (`Class(**settings)(target)`)
+* unittests: GroupController.find, Hueman.scene, Hueman plugin loading, Bridge.preset, Controller._apply_command, hueman.utils

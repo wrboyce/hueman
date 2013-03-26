@@ -16,3 +16,9 @@ class TestHueman(unittest.TestCase):
         self.hueman.bri(50)
         self.assertEqual(self.hueman['limelight01.example.com']._nstate['bri'], 50)
         self.assertEqual(self.hueman['limelight02.example.com']._nstate['bri'], 50)
+
+    def test_plugin_calling(self):
+        self.hueman.plugins['colour'] = mock.Mock()
+        self.hueman.colour('white')
+        expected_call_list = [mock.call(self.hueman['limelight01.example.com'], 'white'), mock.call(self.hueman['limelight02.example.com'], 'white')]
+        self.assertItemsEqual(self.hueman.plugins['colour'].mock_calls, expected_call_list)
