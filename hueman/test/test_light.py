@@ -7,15 +7,9 @@ from hueman.entities import Light
 
 class TestLight(unittest.TestCase):
     def setUp(self):
-        self.light = Light(mock.MagicMock(), '1', 'light-1', {})
-
-    def test_commit(self):
-        self.light._cstate = {'on': False}
-        self.light._nstate = {'on': True}
-        self.light.commit()
-        self.light._bridge._put.assert_called_once_with('lights/1/state', {'on': True})
-        self.assertEqual(self.light._cstate, {'on': True})
-        self.assertEqual(self.light._nstate, {})
+        self.id = 'ID'
+        self.name = 'NAME'
+        self.light = Light(mock.MagicMock(), self.id, self.name, {})
 
     def test_reset(self):
         self.light._cstate = {'on': False}
@@ -110,10 +104,18 @@ class TestLight(unittest.TestCase):
         self.light._bridge._preset.assert_called_once_with('bright')
         self.assertEqual(self.light._nstate['bri'], 255)
 
+    def test_commit(self):
+        self.light._cstate = {'on': False}
+        self.light._nstate = {'on': True}
+        self.light.commit()
+        self.light._bridge._put.assert_called_once_with('lights/ID/state', {'on': True})
+        self.assertEqual(self.light._cstate, {'on': True})
+        self.assertEqual(self.light._nstate, {})
+
     def test_preset_transition(self):
         self.light._bridge._preset.return_value = [{'bri': 0}, {'bri': 255, 'transitiontime': 10}]
         self.light.preset('slow_bright')
         self.light._bridge._preset.assert_called_once_with('slow_bright')
-        self.light._bridge._put.assert_called_once_with('lights/1/state', {'transitiontime': 0.0, 'bri': 0})
+        self.light._bridge._put.assert_called_once_with('lights/ID/state', {'transitiontime': 0.0, 'bri': 0})
         self.assertEqual(self.light._nstate['bri'], 255)
         self.assertEqual(self.light._nstate['transitiontime'], 100)

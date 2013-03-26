@@ -344,9 +344,11 @@ class Bridge(Group):
             if isinstance(name, re._pattern_type):
                 group.add_members(ifilter(lambda l: name.match(l.name) is not None, self._lights))
             elif isinstance(name, basestring):
-                obj = self.group(name)
-                if obj is None:
-                    obj = self.light(name)
-                if obj is not None:
-                    group.add_member(obj)
-        return group.members
+                try:
+                    group.add_member(self.group(name))
+                except KeyError:
+                    try:
+                        group.add_member(self.light(name))
+                    except KeyError:
+                        pass
+        return group
