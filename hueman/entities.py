@@ -333,7 +333,10 @@ class Bridge(Group):
         try:
             return self._groups[name]
         except KeyError:
-            return None
+            matches = filter(lambda g: g.name.startswith(name), self._groups)
+            if len(matches) == 1:
+                return matches[0]
+            raise
 
     def find(self, *names):
         group = GroupController()
