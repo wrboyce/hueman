@@ -20,6 +20,7 @@ setup(
     url='https://www.github.com/wrboyce/hueman',
     license='BSD',
     install_requires=requires,
+    setup_requires=requires,
     packages=['hueman'],
     package_data={'': ['LICENCE'], 'hueman': ['hueman.yml']},
     package_dir={'hueman': 'hueman'},
