@@ -1,6 +1,6 @@
 import sys
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 import hueman
 
@@ -11,6 +11,7 @@ if sys.version_info < (2, 7):
 elif sys.version_info >= (3,):
     extra['use_2to3'] = True
 
+
 setup(
     name='hueman',
     version=hueman.__version__,
@@ -20,8 +21,7 @@ setup(
     url='https://www.github.com/wrboyce/hueman',
     license='BSD',
     install_requires=requires,
-    setup_requires=requires,
-    packages=['hueman'],
+    packages=find_packages(),
     package_data={'': ['LICENCE'], 'hueman': ['hueman.yml']},
     package_dir={'hueman': 'hueman'},
     entry_points={'console_scripts': ['hueman = hueman.util:cli']},

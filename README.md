@@ -9,15 +9,13 @@ A human interface for managing your hues.
 Installation
 ------------
 
-Simple enough, either install directly from The Cheese Shop using your choice of `easy_install` or `pip`:
+Simple enough, either install directly from the Cheese Shop using the normal methods:
 
-    % easy_install hueman
     % pip install hueman
 
-Or, directly from github if you are so inclined:
+Or if you would rather run the bleeding-edge version:
 
-    % pip install git+https://github.com/wrboyce/hueman.git#egg=hueman
-    % pip install https://github.com/wrboyce/hueman/archive/master.tar.gz
+    % pip install hueman==dev
 
 
 Configuration
