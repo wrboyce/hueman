@@ -1,3 +1,5 @@
+import colorsys
+
 import requests
 
 
@@ -10,19 +12,12 @@ class Colour(object):
 
 class RGB(object):
     def __call__(self, controller, val):
-        def rgb2xyz(rgb):
-            """
-                0.4887180  0.3106803  0.2006017
-                0.1762044  0.8129847  0.0108109
-                0.0000000  0.0102048  0.9897952
-            """
+        # TODO: this needs a fair bit of work...
+        def _norm(rgb):  # this function should check what it is normalising
+            d = {}
             for k, v in rgb.iteritems():
-                rgb[k] = v / 255
-            x = rgb['r'] * 0.4887180 + rgb['g'] * 0.3106803 + rgb['b'] * 0.2006017
-            y = rgb['r'] * 0.1762044 + rgb['g'] * 0.8129847 + rgb['b'] * 0.0108109
-            z = rgb['r'] * 0.0000000 + rgb['g'] * 0.0102048 + rgb['b'] * 0.9897952
-            return [x, y, z]
-        rgb = None
+                d[k] = float(v) / 255
+            return d
         if isinstance(val, basestring):
             if val.startswith('#'):
                 val = val[:1]
@@ -31,15 +26,16 @@ class RGB(object):
                 'g': int(val[2:4], 16),
                 'b': int(val[4:6], 16),
             }
-        elif isinstance(val, tuple):
+        elif isinstance(val, tuple):  # again, check the values
             rgb = {
                 'r': val[0],
                 'g': val[1],
                 'b': val[2],
             }
         elif isinstance(val, dict) and 'r' in val and 'g' in val and 'b' in val:
-            rgb = val
+            rgb = val  # one more time, check the values
         if rgb is None:
             raise ValueError("Cannot parse RGB value '{0}'".format(val))
-        val = rgb2xyz(rgb)
-        controller.xy(val[:2])
+        rgb = _norm(rgb)
+        hue, _lightness, sat = colorsys.rgb_to_hls(rgb['r'], rgb['g'], rgb['b'])
+        controller.hue(hue * 65535).sat(sat * 255)
