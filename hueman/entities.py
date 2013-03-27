@@ -238,7 +238,7 @@ class Controller(object):
         if kvs:
             for k, v in kvs:
                 if k not in self._attributes:
-                    for k2 in chain(self._bridge._plugins.keys(), self._attributes.keys()):
+                    for k2 in chain(self._attributes.keys(), self._bridge._plugins.keys()):
                         if k2.startswith(k):
                             k = k2
                             break

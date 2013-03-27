@@ -119,3 +119,80 @@ class TestLight(unittest.TestCase):
         self.light._bridge._put.assert_called_once_with('lights/ID/state', {'transitiontime': 0.0, 'bri': 0})
         self.assertEqual(self.light._nstate['bri'], 255)
         self.assertEqual(self.light._nstate['transitiontime'], 100)
+
+
+class TestCommands(unittest.TestCase):
+    def setUp(self):
+        self.light = mock.MagicMock()
+        self.light.__class__ = Light
+        self.light._apply_command = lambda cmd: Light._apply_command(self.light, cmd)
+        self.light._attributes = Light._attributes.copy()
+
+    def test_on(self):
+        self.light._apply_command('on')
+        self.light.on.assert_called_once_with(True)
+
+    def test_off(self):
+        self.light._apply_command('off')
+        self.light.on.assert_called_once_with(False)
+
+    def test_setattr(self):
+        self.light._apply_command('bri:100')
+        self.light.bri.assert_called_once_with('100')
+
+    def test_setattr_private(self):
+        self.light._apply_command('_bridge:1')
+        self.assertFalse(self.light._bridge.called)
+
+    def test_preset(self):
+        self.light._apply_command('concentrate')
+        self.light.preset.assert_called_once_with('concentrate')
+
+    def test_setattr_abbr(self):
+        self.light._apply_command('b:100')
+        self.light.bri.assert_called_once_with('100')
+
+    def test_plugin(self):
+        self.light._bridge._plugins = {'plugname': mock.Mock()}
+        self.light._apply_command('plugname:arg')
+        self.light.plugname.assert_called_once_with('arg')
+
+    def test_plugin_abbr(self):
+        self.light._bridge._plugins = {'plug': mock.Mock()}
+        self.light._apply_command('plugname:arg')
+        self.light.plugname.assert_called_once_with('arg')
+
+    def test_abbrev_prefers_attrs(self):
+        self.light._bridge._plugins = {'brightnessplugin': mock.Mock()}
+        self.light._apply_command('b:100')
+        self.light.bri.assert_called_once_with('100')
+        self.assertFalse(self.light._bridge._plguins['brightnessplugin'].called)
+
+    def test_setattr_multi(self):
+        self.light._apply_command('bri:100 sat:25 hue:75')
+        self.light.bri.assert_called_once_with('100')
+        self.light.sat.assert_called_once_with('25')
+        self.light.hue.assert_called_once_with('75')
+
+    def test_preset_setattr_mix(self):
+        self.light._apply_command('concentrate bri:100%')
+        self.light.preset.assert_called_once_with('concentrate')
+        self.light.bri.assert_called_once_with('100%')
+
+    def test_preset_plugin_mix(self):
+        self.light._bridge._plugins = {'plugname': mock.Mock()}
+        self.light._apply_command('concentrate plugname:arg')
+        self.light.preset.assert_called_once_with('concentrate')
+        self.light.plugname.assert_called_once_with('arg')
+
+    def test_preset_setattr_plugin_mix(self):
+        self.light._bridge._plugins = {'plugname': mock.Mock()}
+        self.light._apply_command('concentrate plugname:arg bri:100%')
+        self.light.preset.assert_called_once_with('concentrate')
+        self.light.plugname.assert_called_once_with('arg')
+        self.light.bri.assert_called_once_with('100%')
+
+    def test_preset_setattr_mix_abbr(self):
+        self.light._apply_command('concentrate b:100%')
+        self.light.preset.assert_called_once_with('concentrate')
+        self.light.bri.assert_called_once_with('100%')
