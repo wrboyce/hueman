@@ -19,7 +19,7 @@ class TestLight(unittest.TestCase):
         self.assertEqual(self.light._nstate, {})
 
     def test_state(self):
-        self.assertIsNot(self.light.state, self.light._cstate)
+        self.assertTrue(self.light.state is not self.light._cstate)
         self.assertEqual(self.light.state, self.light._cstate)
 
     def test_set_attribute(self):

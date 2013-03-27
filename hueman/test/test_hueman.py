@@ -20,5 +20,6 @@ class TestHueman(unittest.TestCase):
     def test_plugin_calling(self):
         self.hueman.plugins['colour'] = mock.Mock()
         self.hueman.colour('white')
-        expected_call_list = [mock.call(self.hueman['limelight01.example.com'], 'white'), mock.call(self.hueman['limelight02.example.com'], 'white')]
-        self.assertItemsEqual(self.hueman.plugins['colour'].mock_calls, expected_call_list)
+        self.assertTrue(mock.call(self.hueman['limelight01.example.com'], 'white') in self.hueman.plugins['colour'].mock_calls)
+        self.assertTrue(mock.call(self.hueman['limelight02.example.com'], 'white') in self.hueman.plugins['colour'].mock_calls)
+        self.assertTrue(len(self.hueman.plugins['colour'].mock_calls) == 2)
