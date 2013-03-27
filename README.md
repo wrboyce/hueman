@@ -32,7 +32,6 @@ TODO
 ----
 
 * schedule management
-* api: reading state from GroupControllers
-* api: `parse_colour` -- check for colours in `_nstate`
-* Move ("rgb" and "colour") into `Plugins` (`Class(**settings)(target)`)
+* api: read state back after PUT (check for errors, etc)
+* api: `parse_colour` -- check for colours in `_nstate` (order or precendence, drop previous nstate colours)
 * unittests: GroupController.find, Hueman.scene, Hueman plugin loading, Bridge.preset, hueman.utils, Entity.find(re)
