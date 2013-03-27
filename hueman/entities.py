@@ -32,8 +32,8 @@ class Controller(object):
         'xy': {},
         'ct': {
             'preprocessor': 'int',
-            'min': '153',
-            'max': '500',
+            'min': 153,
+            'max': 500,
         },
         'colormode': {},
         'transitiontime': {
@@ -158,7 +158,7 @@ class Controller(object):
             val = min_val
         if max_val is not None and val > max_val:
             val = max_val
-        return val
+        return int(val)
 
     def _pp_time(self, val, _cfg):
         """ Parse a time from "shorthand" format: 10m, 30s, 1m30s. """
