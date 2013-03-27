@@ -1,7 +1,29 @@
 presets:
   red_alert:
+    colour: red
     brightness: 100%
     effect: lselect
-  warm_glow:
-    temp: 350
-    brightness: 20%
+  concentrate:
+    bri: 219
+    ct: 233
+    sat: 215
+    effect: none
+    alert: none
+  energise:
+    bri: 203
+    ct: 155
+    sat: 220
+    effect: none
+    alert: none
+  reading:
+    bri: 240
+    ct: 346
+    sat: 220
+    alert: none
+    effect: none
+  relax:
+    bri: 144
+    ct: 469
+    sat: 215
+    alert: none
+    effect: none
