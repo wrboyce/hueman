@@ -5,9 +5,13 @@ import requests
 
 class Colour(object):
     """ Lookup a colour RGB, convert to XYZ and update the state. """
-    def __call__(self, controller, name):
-        r = requests.get('http://www.colourlovers.com/api/colors?keywords={0}&numResults=1&format=json'.format(name)).json()
-        return controller.rgb(r[0]['hex'])
+    def _get_colour(self, colour):
+        data = requests.get('http://www.colourlovers.com/api/colors?keywords={0}&numResults=1&format=json'.format(colour)).json()
+        return data[0]['hex']
+
+    def __call__(self, controller, colour):
+        colour = self._get_colour(colour)
+        return controller.rgb(colour)
 
 
 class RGB(object):
@@ -20,7 +24,7 @@ class RGB(object):
             return d
         if isinstance(val, basestring):
             if val.startswith('#'):
-                val = val[:1]
+                val = val[1:]
             rgb = {
                 'r': int(val[0:2], 16),
                 'g': int(val[2:4], 16),
@@ -38,4 +42,7 @@ class RGB(object):
             raise ValueError("Cannot parse RGB value '{0}'".format(val))
         rgb = _norm(rgb)
         hue, _lightness, sat = colorsys.rgb_to_hls(rgb['r'], rgb['g'], rgb['b'])
-        controller.hue(hue * 65535).sat(sat * 255)
+        def to_percentage(v):  # noqa
+            return '{0}%'.format(v * 100)
+        controller.hue(to_percentage(hue))
+        controller.sat(to_percentage(sat))
