@@ -19,10 +19,10 @@ class RGB(object):
         # TODO: this needs a fair bit of work...
         def _norm(rgb):  # this function should check what it is normalising
             d = {}
-            for k, v in rgb.iteritems():
+            for k, v in rgb.items():
                 d[k] = float(v) / 255
             return d
-        if isinstance(val, basestring):
+        if isinstance(val, str):
             if val.startswith('#'):
                 val = val[1:]
             rgb = {

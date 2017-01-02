@@ -1,7 +1,5 @@
-from __future__ import print_function
-
 from copy import copy
-from itertools import chain, ifilter
+from itertools import chain
 import json
 import re
 
@@ -98,10 +96,11 @@ class Controller(object):
             def pluginwrapper(*args, **kwargs):
                 self._apply_plugin(key, *args, **kwargs)
                 return self
+
             return pluginwrapper
         try:
             attr_cfg = Light._attributes[key]
-            while isinstance(attr_cfg, basestring):
+            while isinstance(attr_cfg, str):
                 key = attr_cfg
                 attr_cfg = Light._attributes[attr_cfg]
         except KeyError:
@@ -110,13 +109,14 @@ class Controller(object):
         attr_cfg['key'] = key
         ## Get the preprocessor, if one is defined
         preprocessor = attr_cfg.get('preprocessor', None)
-        if isinstance(preprocessor, basestring):  # strings map to self._pp_{preprocessor}
+        if isinstance(preprocessor, str):  # strings map to self._pp_{preprocessor}
             preprocessor = getattr(self, '_pp_{0}'.format(preprocessor), None)
         elif not callable(preprocessor):  # if not, wrap in a lambda so we can call blindly later
             preprocessor = lambda v, c: v
+
         ## Return a wrapper for getting/setting the attribute
         def gettersetter(new_val=None, commit=False):  # noqa
-            #print('{0}.{1}({2})'.format(self, key, new_val))
+            # print('{0}.{1}({2})'.format(self, key, new_val))
             if new_val is None:
                 return self._cstate[key]
             elif attr_cfg.get('readonly', False):
@@ -125,6 +125,7 @@ class Controller(object):
             if commit:
                 self.commit()
             return self
+
         return gettersetter
 
     ## Preprocessors
@@ -176,6 +177,7 @@ class Controller(object):
 
     def preset(self, name, commit=False):
         """ Load a preset state """
+
         def _transition(presets):  # Transitions have to be applied immediately [TODO] state-stack for transitions
             for data in presets:
                 commit = False
@@ -184,13 +186,14 @@ class Controller(object):
                     commit = True
                 self._apply(data, commit)
             return self
+
         preset_data = self._bridge._preset(name)
         if isinstance(preset_data, list):
             return _transition(preset_data)
         return self._apply(preset_data, commit)
 
     def _apply(self, state, commit=False):
-        for key, val in state.iteritems():
+        for key, val in state.items():
             getattr(self, key)(val)
         if commit:
             self.commit()
@@ -218,7 +221,7 @@ class Controller(object):
                 * arg:val preset name arg2:val2
         """
         preset, kvs = [], []
-        if isinstance(command, basestring):
+        if isinstance(command, str):
             command = command.split(' ')
         for s in command:
             if s.startswith('_'):
@@ -267,7 +270,7 @@ class Group(Controller):
     def lights(self, *names):
         if not names:
             return self.light(None)
-        return filter(lambda l: l.name in names, self._lights)
+        return [l for l in self._lights if l.name in names]
 
 
 class Light(Controller):
@@ -279,7 +282,8 @@ class Light(Controller):
 class Bridge(Group):
     def __str__(self):
         tmpl = '<Bridge(hostname="{0}", groups=[{1}], lights=[{2}]>'
-        return tmpl.format(self._hostname, ', '.join([str(g) for g in self._groups]), ', '.join([str(l) for l in self._lights]))
+        return tmpl.format(self._hostname, ', '.join([str(g) for g in self._groups]),
+                           ', '.join([str(l) for l in self._lights]))
 
     def __init__(self, hostname, username, groups={}, plugins={}, presets={}, scenes={}):
         self._bridge = self
@@ -298,12 +302,12 @@ class Bridge(Group):
     def _get_lights(self):
         d = self._get('')
         self._lights = GroupController(name='[{0}].lights'.format(self.name))
-        for l_id, l_data in d.get('lights', {}).iteritems():
+        for l_id, l_data in d.get('lights', {}).items():
             self._lights.add_member(Light(self, l_id, l_data['name'].replace(' ', '-'), l_data.get('state', None)))
 
     def _build_groups(self, g_cfg):
         self._groups = GroupController(name='[{0}].groups'.format(self.name))
-        for g_name, g_lights in g_cfg.iteritems():
+        for g_name, g_lights in g_cfg.items():
             g = GroupController(g_name)
             g.add_members(self.find(*g_lights))
             self._groups.add_member(g)
@@ -324,7 +328,8 @@ class Bridge(Group):
         return requests.get('http://{0}/api/{1}/{2}'.format(self._hostname, self._username, path)).json()
 
     def _put(self, path, data):
-        return requests.put('http://{0}/api/{1}/{2}'.format(self._hostname, self._username, path), json.dumps(data)).json()
+        return requests.put('http://{0}/api/{1}/{2}'.format(self._hostname, self._username, path),
+                            json.dumps(data)).json()
 
     def group(self, name):
         """ Lookup a group by name, if name is None return all groups. """
@@ -333,7 +338,7 @@ class Bridge(Group):
         try:
             return self._groups[name]
         except KeyError:
-            matches = filter(lambda g: g.name.startswith(name), self._groups)
+            matches = [g for g in self._groups if g.name.startswith(name)]
             if len(matches) == 1:
                 return matches[0]
             raise
@@ -342,8 +347,8 @@ class Bridge(Group):
         group = GroupController()
         for name in names:
             if isinstance(name, re._pattern_type):
-                group.add_members(ifilter(lambda l: name.match(l.name) is not None, self._lights))
-            elif isinstance(name, basestring):
+                group.add_members(filter(lambda l: name.match(l.name) is not None, self._lights))
+            elif isinstance(name, str):
                 try:
                     group.add_member(self.group(name))
                 except KeyError:

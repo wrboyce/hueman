@@ -1,17 +1,9 @@
-import sys
-
 from setuptools import setup, find_packages
 
 import hueman
 
 
-requires, extra = ['requests', 'PyYAML'], {}
-if sys.version_info < (2, 7):
-    requires.append('argparse')
-elif sys.version_info >= (3,):
-    extra['use_2to3'] = True
-
-
+requires = ['requests', 'PyYAML']
 setup(
     name='hueman',
     version=hueman.__version__,
@@ -25,6 +17,5 @@ setup(
     package_data={'': ['LICENCE'], 'hueman': ['hueman.yml']},
     package_dir={'hueman': 'hueman'},
     entry_points={'console_scripts': ['hueman = hueman.util:cli']},
-    zip_safe=False,
-    **extra
+    zip_safe=False
 )

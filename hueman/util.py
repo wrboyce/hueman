@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 
 import argparse
 import inspect
@@ -53,7 +53,7 @@ def cli(args=None):
         if args.all or 'p' in args.list:
             print("Plugins")
             print("=======")
-            for plugin_name, plugin in hue.plugins.iteritems():
+            for plugin_name, plugin in hue.plugins.items():
                 plugin_signature = '{0}'.format(plugin_name)
                 plugin_argspec = inspect.getargspec(plugin.__call__)[0][2:]
                 if plugin_argspec:

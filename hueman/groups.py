@@ -1,6 +1,6 @@
-from __future__ import print_function
 
-from itertools import ifilter
+
+
 import sys
 
 
@@ -24,8 +24,8 @@ class GroupController(object):
     def __getitem__(self, key):
         """ Allow `groupcontroller[item_name]` style access """
         try:
-            i = ifilter(lambda m: m.name == key, self._members)
-            return i.next()
+            i = filter(lambda m: m.name == key, self._members)
+            return next(i)
         except StopIteration:
             raise KeyError
 
@@ -49,7 +49,7 @@ class GroupController(object):
         # TODO - this can be dumber
         def wrapper(new_val=None, commit=False):
             #print('{0}.{1}({2})'.format(self, key, new_val))
-            vals = map(lambda m: (m.name, getattr(m, key)() if new_val is None else getattr(m, key)(new_val)), self._members)
+            vals = [(m.name, getattr(m, key)() if new_val is None else getattr(m, key)(new_val)) for m in self._members]
             if new_val is None:
                 return vals
             if commit:
@@ -77,9 +77,9 @@ class Hueman(GroupController):
         super(Hueman, self).__init__()
         self.plugins = {}
         if cfg.get('plugins'):
-            for plugin_name, plugin_cfg in cfg.get('plugins').iteritems():
+            for plugin_name, plugin_cfg in cfg.get('plugins').items():
                 plugin_settings = {}
-                if isinstance(plugin_cfg, basestring):
+                if isinstance(plugin_cfg, str):
                     plugin_classpath = plugin_cfg
                 else:
                     plugin_classpath = plugin_cfg['path']
@@ -97,14 +97,14 @@ class Hueman(GroupController):
         return '<{0}(members=[{1}])>'.format(self.__class__.__name__, ', '.join([str(m) for m in self._members]))
 
     def scene(self, scene, commit=False):
-        if isinstance(scene, basestring):
+        if isinstance(scene, str):
             scene = self.scenes[scene]
-        for target, settings in scene.iteritems():
-            if isinstance(settings, basestring):
+        for target, settings in scene.items():
+            if isinstance(settings, str):
                 self.find(target)._apply_command(settings)
             elif isinstance(settings, dict):
                 self.find(target)._apply(settings)
         if commit:
-            target = self.find(*scene.keys())
+            target = self.find(*list(scene.keys()))
             target.commit()
         return self
